@@ -91,12 +91,16 @@ export default function Quiz() {
         }
 
         const quizData = await generateQuiz(targetContent, seenQuestions);
+        if (!quizData || quizData.length === 0) {
+          throw new Error("No questions returned from AI");
+        }
         setQuestions(quizData);
       } else {
         navigate("/materials");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching quiz:", error);
+      // We keep questions as empty, which will trigger the error UI
     } finally {
       setLoading(false);
     }

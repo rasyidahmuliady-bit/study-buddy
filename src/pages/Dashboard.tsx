@@ -12,7 +12,8 @@ import {
   Plus,
   Sparkles,
   Play,
-  ChevronRight
+  ChevronRight,
+  RotateCcw
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -247,9 +248,28 @@ export default function Dashboard() {
             colorClass: "bg-purple-500"
           };
         } 
-        // Priority 3: Returning to Last Subject or Starting New
+        // Priority 3: Inactivity Check (If last session was more than 2 days ago)
+        const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
+        let lastStudyTime = 0;
+        if (rawProgress.length > 0 && rawProgress[0].completionDate) {
+          const date = rawProgress[0].completionDate;
+          lastStudyTime = typeof date === 'string' ? new Date(date).getTime() : (date as any).toMillis?.() || new Date(date as any).getTime();
+        }
+        
+        if (lastStudyTime && lastStudyTime < twoDaysAgo && materials.length > 0) {
+          const lastMaterial = materials[0];
+          step = {
+            title: "Welcome Back!",
+            description: `It's been a few days since your last session. Return to "${lastMaterial.fileName.split('.')[0]}" to keep your streak alive.`,
+            actionLabel: "Pick Up Where You Left Off",
+            onClick: () => navigate(`/ai-study?id=${lastMaterial.id}`),
+            icon: RotateCcw,
+            colorClass: "bg-orange-500"
+          };
+        }
+        // Priority 4: Returning to Last Subject or Starting New
         else if (materials.length > 0) {
-          const lastMaterial = materials[0]; // Materials are sorted by date or fetch order
+          const lastMaterial = materials[0];
           if (avgScore >= 85 && currentLatestScore >= 80) {
             step = {
               title: "Master New Topic",
