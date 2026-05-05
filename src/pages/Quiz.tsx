@@ -47,7 +47,6 @@ export default function Quiz() {
   const [startTime] = useState(Date.now());
   const [totalStudyTime, setTotalStudyTime] = useState(0);
   const [wrongAnswers, setWrongAnswers] = useState<any[]>([]);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!materialId && location.pathname === "/quiz") {
@@ -60,7 +59,6 @@ export default function Quiz() {
   }, [materialId, location.pathname]);
 
   const fetchMaterialAndGenerateQuiz = async () => {
-    setErrorMsg(null);
     try {
       const docSnap = await getDoc(doc(db, "materials", materialId!));
       if (docSnap.exists()) {
@@ -102,7 +100,6 @@ export default function Quiz() {
       }
     } catch (error: any) {
       console.error("Error fetching quiz:", error);
-      setErrorMsg(error.message || String(error));
       // We keep questions as empty, which will trigger the error UI
     } finally {
       setLoading(false);
@@ -217,9 +214,7 @@ export default function Quiz() {
         </div>
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-bold">Quiz Data Unavailable</h2>
-          <p className="text-muted-foreground">
-            {errorMsg || "We couldn't generate questions for this material. This can happen if the content is too brief or if there was a technical glitch."}
-          </p>
+          <p className="text-muted-foreground">We couldn't generate questions for this material. This can happen if the content is too brief or if there was a technical glitch.</p>
         </div>
         <div className="flex gap-4">
           <Button variant="outline" onClick={() => navigate("/materials")}>Back to Materials</Button>
