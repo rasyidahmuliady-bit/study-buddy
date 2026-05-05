@@ -47,6 +47,7 @@ export default function Quiz() {
   const [startTime] = useState(Date.now());
   const [totalStudyTime, setTotalStudyTime] = useState(0);
   const [wrongAnswers, setWrongAnswers] = useState<any[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!materialId && location.pathname === "/quiz") {
@@ -100,7 +101,7 @@ export default function Quiz() {
       }
     } catch (error: any) {
       console.error("Error fetching quiz:", error);
-      // We keep questions as empty, which will trigger the error UI
+      setErrorMsg(error instanceof Error ? error.message : String(error));
     } finally {
       setLoading(false);
     }
@@ -212,9 +213,15 @@ export default function Quiz() {
         <div className="bg-destructive/10 p-4 rounded-full text-destructive">
           <AlertCircle size={48} />
         </div>
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-2 max-w-lg">
           <h2 className="text-2xl font-bold">Quiz Data Unavailable</h2>
           <p className="text-muted-foreground">We couldn't generate questions for this material. This can happen if the content is too brief or if there was a technical glitch.</p>
+          {errorMsg && (
+            <div className="mt-4 p-4 bg-muted rounded-xl text-left">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Technical Details</p>
+              <code className="text-xs break-all block whitespace-pre-wrap">{errorMsg}</code>
+            </div>
+          )}
         </div>
         <div className="flex gap-4">
           <Button variant="outline" onClick={() => navigate("/materials")}>Back to Materials</Button>
