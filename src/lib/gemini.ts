@@ -1,10 +1,27 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const getApiKey = () => {
-  return process.env.GEMINI_API_KEY || "";
+  // Direct check for Vite environment variable (standard for Vercel + Vite)
+  const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (viteKey && viteKey !== "MY_GEMINI_API_KEY") {
+    return viteKey;
+  }
+
+  // Fallback to process.env (Standard for Node/AI Studio environments)
+  const nodeKey = process.env.GEMINI_API_KEY;
+  if (nodeKey && nodeKey !== "MY_GEMINI_API_KEY") {
+    return nodeKey;
+  }
+
+  return "";
 };
 
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+const apiKey = getApiKey();
+if (!apiKey) {
+  console.error("DEBUG: Gemini API key is missing from environment variables.");
+}
+
+const ai = new GoogleGenAI({ apiKey });
 
 export async function generateStudyChunks(content: string, weakTopics?: string[]) {
   const wordCount = content.split(/\s+/).length;
@@ -12,7 +29,7 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
   const targetChunks = Math.max(1, Math.ceil(wordCount / 400));
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash-exp",
+    model: "gemini-3-flash-preview",
     contents: `You are an expert tutor. Analyze the following study material and break it down into approximately ${targetChunks} comprehensive, high-quality study chunks. 
     
     DYNAMIC CHUNKING RULES:
@@ -61,7 +78,7 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
 
 export async function generateQuiz(content: string, seenQuestions: string[] = []) {
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash-exp",
+    model: "gemini-3-flash-preview",
     contents: `Generate a 5-question multiple choice quiz based on the following study material. 
     
     UNIFORMITY VS VARIETY:
