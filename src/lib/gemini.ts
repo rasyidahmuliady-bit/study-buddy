@@ -28,22 +28,16 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
   const wordCount = content.split(/\s+/).length;
   const targetChunks = Math.max(1, Math.ceil(wordCount / 400));
 
-  const systemInstruction = `You are an expert tutor. Break down study material into ~${targetChunks} high-quality chunks.
-  
-  RULES:
-  - Each chunk: 300-500 words.
-  - Logical breaks at major topics.
-  ${weakTopics && weakTopics.length > 0 ? `- PRIORITIZE these weak topics: ${weakTopics.join(", ")}` : ""}
-  
-  FORMATTING:
-  - H3 headers (###) on new lines.
-  - Bullet points on new lines.
-  - Use blockquotes (>) for a "Summary Note" at the end of each chunk.`;
+  const systemInstruction = `You are an expert tutor. Break material into ~${targetChunks} high-quality chunks.
+  - Chunks: 300-500 words each.
+  - Formatting: ### headers and * bullets on new lines.
+  - End each chunk with a > Summary Note.
+  ${weakTopics && weakTopics.length > 0 ? `- Focus on these weak topics: ${weakTopics.join(", ")}` : ""}`;
 
   const model = getModel("gemini-1.5-flash", systemInstruction);
   
   const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: `Generate study chunks for this material:\n\n${content}` }] }],
+    contents: [{ role: "user", parts: [{ text: `Material:\n\n${content}` }] }],
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -64,21 +58,15 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
 }
 
 export async function generateQuiz(content: string, seenQuestions: string[] = []) {
-  const systemInstruction = `Generate a 5-question multiple choice quiz.
-  
-  VARIATION RULES:
-  - approach concepts from different angles (scenarios, application, contrast).
-  - AVOID REPEATING these question stems: ${seenQuestions.slice(-10).join(" | ")}.
-  
-  QUIZ SPECS:
-  - 5 questions, 4 options each.
-  - Mix difficulty (Easy/Medium/Hard).
-  - Provide 'topic' (2-3 words) and 'explanation' for the correct answer.`;
+  const systemInstruction = `Generate a 5-question multiple choice quiz. FAST MODE.
+  VARIATION: Scenario, Application, or Contrast.
+  AVOID: ${seenQuestions.slice(-5).join(" | ")}.
+  SPECS: 5 questions, 4 options. Include 'topic' (short) and 'explanation'.`;
 
-  const model = getModel("gemini-1.5-flash", systemInstruction);
+  const model = getModel("gemini-3-flash-preview", systemInstruction);
 
   const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: `Generate a quiz based on this material:\n\n${content}` }] }],
+    contents: [{ role: "user", parts: [{ text: `Material:\n\n${content}` }] }],
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: {
