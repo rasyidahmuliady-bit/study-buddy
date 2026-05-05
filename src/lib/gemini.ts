@@ -1,16 +1,23 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const getApiKey = () => {
-  // Direct check for Vite environment variable (standard for Vercel + Vite)
-  const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
+  // 1. Try Vite-prefixed environment variable (standard for Vite + Vercel browser side)
+  // We use string indexing to avoid issues if define plugins are aggressive
+  const viteKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
   if (viteKey && viteKey !== "MY_GEMINI_API_KEY") {
     return viteKey;
   }
 
-  // Fallback to process.env (Standard for Node/AI Studio environments)
-  const nodeKey = process.env.GEMINI_API_KEY;
-  if (nodeKey && nodeKey !== "MY_GEMINI_API_KEY") {
-    return nodeKey;
+  // 2. Try process.env if available (Node.js / AI Studio environment)
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+      const nodeKey = process.env.GEMINI_API_KEY;
+      if (nodeKey && nodeKey !== "MY_GEMINI_API_KEY") {
+        return nodeKey;
+      }
+    }
+  } catch (e) {
+    // process.env might not be accessible in some browser environments
   }
 
   return "";
@@ -18,19 +25,22 @@ const getApiKey = () => {
 
 const apiKey = getApiKey();
 if (!apiKey) {
-  console.error("DEBUG: Gemini API key is missing from environment variables.");
+  console.warn("Gemini API key is missing. AI features will not work correctly.");
 }
 
 const ai = new GoogleGenAI({ apiKey });
 
-export async function generateStudyChunks(content: string, weakTopics?: string[]) {
-  const wordCount = content.split(/\s+/).length;
-  // Adaptive Logic: Aim for ~300-500 words per chunk
-  const targetChunks = Math.max(1, Math.ceil(wordCount / 400));
+// Use a more stable, production-ready model for external deployments
+const DEFAULT_MODEL = "gemini-1.5-flash-latest";
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `You are an expert tutor. Analyze the following study material and break it down into approximately ${targetChunks} comprehensive, high-quality study chunks. 
+export async function generateStudyChunks(content: string, weakTopics?: string[]) {
+  try {
+    const wordCount = content.split(/\s+/).length;
+    const targetChunks = Math.max(1, Math.ceil(wordCount / 400));
+
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: `You are an expert tutor. Analyze the following study material and break it down into approximately ${targetChunks} comprehensive, high-quality study chunks. 
     
     DYNAMIC CHUNKING RULES:
     - Do NOT be strictly bound by the target count of ${targetChunks} if the content flows better otherwise.
@@ -74,12 +84,17 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
     }
   });
   return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Gemini Study Chunk Generation Error:", error);
+    throw error;
+  }
 }
 
 export async function generateQuiz(content: string, seenQuestions: string[] = []) {
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Generate a 5-question multiple choice quiz based on the following study material. 
+  try {
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: `Generate a 5-question multiple choice quiz based on the following study material. 
     
     UNIFORMITY VS VARIETY:
     - AI MISSION: Every quiz session MUST feel fresh and unique.
@@ -129,4 +144,8 @@ export async function generateQuiz(content: string, seenQuestions: string[] = []
     }
   });
   return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Gemini Quiz Generation Error:", error);
+    throw error;
+  }
 }

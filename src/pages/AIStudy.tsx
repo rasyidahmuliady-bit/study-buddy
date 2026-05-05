@@ -285,8 +285,11 @@ export default function AIStudy() {
     }
   };
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const generateChunks = async (content: string, weakTopics: string[], startIdx: number, timeRem: number) => {
     setGenerating(true);
+    setErrorMsg(null);
     try {
       const result = await generateStudyChunks(content, weakTopics);
       setChunks(result);
@@ -294,8 +297,9 @@ export default function AIStudy() {
       setTimeLeft(timeRem);
       // Save chunks to session immediately after generation
       await saveSessionProgress(startIdx, timeRem, result);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating chunks:", error);
+      setErrorMsg(error.message || String(error));
     } finally {
       setGenerating(false);
       setLoading(false);
@@ -360,7 +364,7 @@ export default function AIStudy() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold">Generation Failed</h2>
           <p className="text-muted-foreground max-w-sm mx-auto">
-            We couldn't break down this material into study chunks. This might be due to a technical error or incompatible content.
+            {errorMsg || "We couldn't break down this material into study chunks. This might be due to a technical error or incompatible content."}
           </p>
           <Button 
             onClick={() => window.location.reload()} 
