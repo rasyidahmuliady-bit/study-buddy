@@ -1,37 +1,26 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const getApiKey = () => {
-  // 1. Try Vite-prefixed environment variable (standard for Vite + Vercel browser side)
-  // We use string indexing to avoid issues if define plugins are aggressive
-  const viteKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
-  if (viteKey && viteKey !== "MY_GEMINI_API_KEY") {
-    return viteKey;
-  }
+  // Priority 1: VITE_ prefixed (Vite standard for client-side)
+  const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (viteKey && viteKey !== "MY_GEMINI_API_KEY") return viteKey;
 
-  // 2. Try process.env if available (Node.js / AI Studio environment)
-  try {
-    if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-      const nodeKey = process.env.GEMINI_API_KEY;
-      if (nodeKey && nodeKey !== "MY_GEMINI_API_KEY") {
-        return nodeKey;
-      }
-    }
-  } catch (e) {
-    // process.env might not be accessible in some browser environments
-  }
+  // Priority 2: Standard GEMINI_API_KEY (AI Studio/Backend)
+  const studioKey = process.env.GEMINI_API_KEY;
+  if (studioKey && studioKey !== "MY_GEMINI_API_KEY") return studioKey;
 
   return "";
 };
 
 const apiKey = getApiKey();
 if (!apiKey) {
-  console.warn("Gemini API key is missing. AI features will not work correctly.");
+  console.warn("Gemini API key is missing. Ensure VITE_GEMINI_API_KEY is set in your environment.");
 }
 
 const ai = new GoogleGenAI({ apiKey });
 
-// Use a more stable, production-ready model for external deployments
-const DEFAULT_MODEL = "gemini-1.5-flash-latest";
+// Use standard model ID to avoid v1beta compatibility issues
+const DEFAULT_MODEL = "gemini-1.5-flash";
 
 export async function generateStudyChunks(content: string, weakTopics?: string[]) {
   try {
