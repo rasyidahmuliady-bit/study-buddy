@@ -17,9 +17,9 @@ if (!apiKey) {
   console.warn("Gemini API key is missing. Ensure VITE_GEMINI_API_KEY is set in your environment.");
 }
 
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ apiKey, apiVersion: "v1" });
 
-// Use standard model ID to avoid v1beta compatibility issues
+// Use standard model ID
 const DEFAULT_MODEL = "gemini-1.5-flash";
 
 export async function generateStudyChunks(content: string, weakTopics?: string[]) {
