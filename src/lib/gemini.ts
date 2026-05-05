@@ -1,15 +1,27 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const getApiKey = () => {
-  // Check for Vite environment variable (used in Vercel/Production)
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-    return import.meta.env.VITE_GEMINI_API_KEY;
+  // Direct check for Vite environment variable (standard for Vercel + Vite)
+  const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (viteKey && viteKey !== "MY_GEMINI_API_KEY") {
+    return viteKey;
   }
-  // Fallback to process.env (used in AI Studio / Node environment)
-  return process.env.GEMINI_API_KEY || "";
+
+  // Fallback to process.env (Standard for Node/AI Studio environments)
+  const nodeKey = process.env.GEMINI_API_KEY;
+  if (nodeKey && nodeKey !== "MY_GEMINI_API_KEY") {
+    return nodeKey;
+  }
+
+  return "";
 };
 
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+const apiKey = getApiKey();
+if (!apiKey) {
+  console.error("DEBUG: Gemini API key is missing from environment variables.");
+}
+
+const ai = new GoogleGenAI({ apiKey });
 
 export async function generateStudyChunks(content: string, weakTopics?: string[]) {
   const wordCount = content.split(/\s+/).length;
