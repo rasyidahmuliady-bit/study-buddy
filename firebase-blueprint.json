@@ -1,0 +1,106 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A student user of the Study Buddy system.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full name of the student" },
+        "email": { "type": "string", "format": "email", "description": "Email address" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation date" },
+        "avatarUrl": { "type": "string", "format": "uri", "description": "URL to the user's avatar" }
+      },
+      "required": ["uid", "name", "email"]
+    },
+    "Material": {
+      "title": "Material",
+      "description": "Study material uploaded by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique material ID" },
+        "userId": { "type": "string", "description": "ID of the user who uploaded the material" },
+        "fileName": { "type": "string", "description": "Original name of the file" },
+        "content": { "type": "string", "description": "Extracted text content for AI processing" },
+        "uploadDate": { "type": "string", "format": "date-time", "description": "Date of upload" },
+        "subject": { "type": "string", "description": "Subject or category of the material" }
+      },
+      "required": ["id", "userId", "fileName", "uploadDate"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "A quiz generated from study material.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique quiz ID" },
+        "materialId": { "type": "string", "description": "ID of the material this quiz belongs to" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "correctAnswer": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "materialId", "questions"]
+    },
+    "Progress": {
+      "title": "Progress",
+      "description": "A record of a user's quiz performance.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique progress ID" },
+        "userId": { "type": "string", "description": "ID of the user" },
+        "quizId": { "type": "string", "description": "ID of the quiz taken" },
+        "score": { "type": "integer", "description": "Score achieved (0-100)" },
+        "completionDate": { "type": "string", "format": "date-time" },
+        "studyTime": { "type": "integer", "description": "Total study time in seconds" },
+        "weakTopics": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "userId", "quizId", "score", "completionDate"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "An active study session that can be resumed.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "materialId": { "type": "string" },
+        "currentChunkIndex": { "type": "integer" },
+        "timeLeft": { "type": "integer" },
+        "mode": { "type": "string" },
+        "lastUpdated": { "type": "string", "format": "date-time" },
+        "completionPercentage": { "type": "integer" },
+        "chunks": { "type": "array" }
+      },
+      "required": ["userId", "materialId", "mode", "chunks"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores user profile information."
+    },
+    "/materials/{materialId}": {
+      "schema": "Material",
+      "description": "Stores metadata and content of uploaded study materials."
+    },
+    "/quizzes/{quizId}": {
+      "schema": "Quiz",
+      "description": "Stores AI-generated quizzes."
+    },
+    "/progress/{progressId}": {
+      "schema": "Progress",
+      "description": "Stores user quiz results and progress tracking."
+    },
+    "/sessions/{sessionId}": {
+      "schema": "Session",
+      "description": "Stores the active study sessions for users, keyed by userId_materialId."
+    }
+  }
+}

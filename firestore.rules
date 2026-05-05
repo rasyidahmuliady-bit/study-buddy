@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'email']) &&
+             data.keys().hasOnly(['uid', 'name', 'email', 'createdAt', 'avatarUrl']) &&
+             data.uid == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() < 1000));
+    }
+
+    function isValidMaterial(data) {
+      return data.keys().hasAll(['userId', 'fileName', 'uploadDate', 'content']) &&
+             data.keys().hasOnly(['userId', 'fileName', 'uploadDate', 'content', 'subject', 'fileType']) &&
+             data.userId == request.auth.uid &&
+             data.fileName is string && data.fileName.size() > 0 && data.fileName.size() < 255 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 1000000 &&
+             data.uploadDate is string &&
+             (!('subject' in data) || (data.subject is string && data.subject.size() < 100));
+    }
+
+    function isValidQuiz(data) {
+      return data.keys().hasAll(['materialId', 'questions']) &&
+             data.keys().hasOnly(['materialId', 'questions', 'createdAt', 'userId']) &&
+             data.materialId is string &&
+             data.questions is list && data.questions.size() > 0 && data.questions.size() <= 20;
+    }
+
+    function isValidProgress(data) {
+      return data.keys().hasAll(['userId', 'quizId', 'score', 'completionDate']) &&
+             data.keys().hasOnly(['userId', 'quizId', 'score', 'completionDate', 'studyTime', 'weakTopics', 'studyMode']) &&
+             data.userId == request.auth.uid &&
+             data.quizId is string &&
+             data.score is int && data.score >= 0 && data.score <= 100 &&
+             data.completionDate is string &&
+             (!('studyTime' in data) || data.studyTime is int) &&
+             (!('weakTopics' in data) || (data.weakTopics is list && data.weakTopics.size() <= 10)) &&
+             (!('studyMode' in data) || data.studyMode is string);
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll(['userId', 'materialId', 'mode', 'chunks']) &&
+             data.keys().hasOnly(['userId', 'materialId', 'mode', 'currentChunkIndex', 'timeLeft', 'lastUpdated', 'completionPercentage', 'chunks']) &&
+             data.userId == request.auth.uid &&
+             data.materialId is string &&
+             data.mode is string &&
+             data.chunks is list && data.chunks.size() >= 0 && data.chunks.size() <= 100;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    match /materials/{materialId} {
+      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow get: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidMaterial(request.resource.data);
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && isValidMaterial(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidQuiz(request.resource.data);
+    }
+
+    match /progress/{progressId} {
+      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow get: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidProgress(request.resource.data);
+    }
+
+    match /sessions/{sessionId} {
+      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow get: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow write: if isAuthenticated() && 
+                   (request.method == 'DELETE' ? (resource != null && resource.data.userId == request.auth.uid) : request.resource.data.userId == request.auth.uid) &&
+                   (request.method == 'DELETE' || isValidSession(request.resource.data));
+    }
+  }
+}
