@@ -1,11 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const getApiKey = () => {
-  // Check for Vite environment variable (used in Vercel/Production)
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-    return import.meta.env.VITE_GEMINI_API_KEY;
-  }
-  // Fallback to process.env (used in AI Studio / Node environment)
   return process.env.GEMINI_API_KEY || "";
 };
 
@@ -17,7 +12,7 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
   const targetChunks = Math.max(1, Math.ceil(wordCount / 400));
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash-exp",
     contents: `You are an expert tutor. Analyze the following study material and break it down into approximately ${targetChunks} comprehensive, high-quality study chunks. 
     
     DYNAMIC CHUNKING RULES:
@@ -66,7 +61,7 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
 
 export async function generateQuiz(content: string, seenQuestions: string[] = []) {
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash-exp",
     contents: `Generate a 5-question multiple choice quiz based on the following study material. 
     
     UNIFORMITY VS VARIETY:
