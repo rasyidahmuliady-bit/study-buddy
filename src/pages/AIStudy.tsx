@@ -91,7 +91,7 @@ export default function AIStudy() {
         mode,
         chunks: studyChunks, // Save the actual content chunks to avoid regeneration
         lastUpdated: new Date().toISOString(),
-        completionPercentage: studyChunks.length > 0 ? Math.round((index / studyChunks.length) * 100) : 0
+        completionPercentage: studyChunks.length > 0 ? Math.round(((index + 1) / studyChunks.length) * 100) : 0
       });
     } catch (error) {
       console.error("Error saving session:", error);

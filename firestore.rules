@@ -44,14 +44,15 @@ service cloud.firestore {
 
     function isValidProgress(data) {
       return data.keys().hasAll(['userId', 'quizId', 'score', 'completionDate']) &&
-             data.keys().hasOnly(['userId', 'quizId', 'score', 'completionDate', 'studyTime', 'weakTopics', 'studyMode']) &&
+             data.keys().hasOnly(['userId', 'quizId', 'score', 'completionDate', 'studyTime', 'weakTopics', 'studyMode', 'allQuestions']) &&
              data.userId == request.auth.uid &&
              data.quizId is string &&
              data.score is int && data.score >= 0 && data.score <= 100 &&
              data.completionDate is string &&
              (!('studyTime' in data) || data.studyTime is int) &&
              (!('weakTopics' in data) || (data.weakTopics is list && data.weakTopics.size() <= 10)) &&
-             (!('studyMode' in data) || data.studyMode is string);
+             (!('studyMode' in data) || data.studyMode is string) &&
+             (!('allQuestions' in data) || data.allQuestions is list);
     }
 
     function isValidSession(data) {
