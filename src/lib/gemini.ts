@@ -1,6 +1,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const getApiKey = () => {
+  // Check for Vite environment variable (used in Vercel/Production)
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+    return import.meta.env.VITE_GEMINI_API_KEY;
+  }
+  // Fallback to process.env (used in AI Studio / Node environment)
+  return process.env.GEMINI_API_KEY || "";
+};
+
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
 export async function generateStudyChunks(content: string, weakTopics?: string[]) {
   const wordCount = content.split(/\s+/).length;
