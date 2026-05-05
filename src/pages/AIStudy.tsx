@@ -484,20 +484,16 @@ export default function AIStudy() {
                 {rawSubjects.length > 3 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger
-                      render={
-                        <button
-                          className={cn(
-                            "px-5 py-2 rounded-full text-sm font-medium transition-all border flex items-center gap-2 shrink-0",
-                            otherSubjects.includes(selectedSubject)
-                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                              : "bg-background text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30"
-                          )}
-                        >
-                          {otherSubjects.includes(selectedSubject) ? selectedSubject : `+ ${rawSubjects.length - 3} More`}
-                          <ChevronRight className={cn("w-4 h-4 transition-transform", "rotate-90")} />
-                        </button>
-                      }
-                    />
+                      className={cn(
+                        "px-5 py-2 rounded-full text-sm font-medium transition-all border flex items-center gap-2 shrink-0 cursor-pointer",
+                        otherSubjects.includes(selectedSubject)
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-background text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30"
+                      )}
+                    >
+                      {otherSubjects.includes(selectedSubject) ? selectedSubject : `+ ${rawSubjects.length - 3} More`}
+                      <ChevronRight className={cn("w-4 h-4 transition-transform", "rotate-90")} />
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-64 p-2 !rounded-2xl shadow-xl">
                       <div className="p-2 pt-1 pb-2">
                         <div className="relative">
