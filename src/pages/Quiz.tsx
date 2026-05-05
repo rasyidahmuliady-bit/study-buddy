@@ -128,17 +128,17 @@ export default function Quiz() {
   };
 
   const handleCheckAnswer = () => {
-    if (!selectedOption) return;
+    if (!selectedOption || !currentQuestion) return;
     setIsAnswered(true);
-    if (selectedOption === questions[currentQuestionIndex].correctAnswer) {
+    if (selectedOption === currentQuestion.correctAnswer) {
       setScore(prev => prev + 1);
     } else {
       setWrongAnswers(prev => [...prev, {
-        question: questions[currentQuestionIndex].question,
+        question: currentQuestion.question,
         yourAnswer: selectedOption,
-        correctAnswer: questions[currentQuestionIndex].correctAnswer,
-        topic: questions[currentQuestionIndex].topic,
-        explanation: questions[currentQuestionIndex].explanation
+        correctAnswer: currentQuestion.correctAnswer,
+        topic: currentQuestion.topic,
+        explanation: currentQuestion.explanation
       }]);
     }
   };
@@ -197,6 +197,24 @@ export default function Quiz() {
               ? "We're focusing on the sections you just studied."
               : "Creating personalized questions from your material."}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if ((!questions || questions.length === 0) && !showResult) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-6 animate-in fade-in">
+        <div className="bg-destructive/10 p-4 rounded-full text-destructive">
+          <AlertCircle size={48} />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold">Quiz Data Unavailable</h2>
+          <p className="text-muted-foreground">We couldn't generate questions for this material. This can happen if the content is too brief or if there was a technical glitch.</p>
+        </div>
+        <div className="flex gap-4">
+          <Button variant="outline" onClick={() => navigate("/materials")}>Back to Materials</Button>
+          <Button onClick={() => window.location.reload()}>Retry Generation</Button>
         </div>
       </div>
     );
@@ -349,8 +367,8 @@ export default function Quiz() {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const currentQuestion = (questions && questions.length > 0 && currentQuestionIndex < questions.length) ? questions[currentQuestionIndex] : null;
+  const progress = (questions && questions.length > 0) ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -391,81 +409,91 @@ export default function Quiz() {
           transition={{ duration: 0.2 }}
         >
           <Card className="border-border shadow-2xl rounded-[32px] overflow-hidden border-t-8 border-t-primary">
-            <CardHeader className="pb-4 pt-10 px-6 sm:px-10 text-center">
-              <CardTitle className="text-xl sm:text-2xl font-bold leading-tight tracking-tight text-balance font-heading text-slate-900">
-                {currentQuestion.question}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 p-6 sm:p-10 pt-4">
-              <RadioGroup 
-                value={selectedOption || ""} 
-                onValueChange={setSelectedOption}
-                disabled={isAnswered}
-                className="grid gap-4"
-              >
-                {currentQuestion.options.map((option: string, index: number) => {
-                  const isCorrect = option === currentQuestion.correctAnswer;
-                  const isSelected = selectedOption === option;
-                  
-                  return (
-                    <div key={index} className="relative">
-                      <RadioGroupItem
-                        value={option}
-                        id={`option-${index}`}
-                        className="sr-only"
-                      />
-                      <Label
-                        htmlFor={`option-${index}`}
-                        className={cn(
-                          "flex items-center justify-between w-full p-4 rounded-xl border-2 cursor-pointer transition-all text-base font-semibold shadow-sm transition-all duration-200 font-sans",
-                          isSelected ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
-                          isAnswered && isCorrect && "border-emerald-500 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-100",
-                          isAnswered && isSelected && !isCorrect && "border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-100",
-                          isAnswered && !isSelected && !isCorrect && "opacity-40 grayscale-[0.3]"
-                        )}
-                      >
-                        <span className="flex-1 pr-4 leading-relaxed">{option}</span>
-                        <div className="shrink-0 flex items-center justify-center">
-                          {isAnswered && isCorrect && <CheckCircle2 className="text-emerald-600" size={24} />}
-                          {isAnswered && isSelected && !isCorrect && <XCircle className="text-rose-600" size={24} />}
-                          {!isAnswered && (
-                            <div className={cn(
-                              "w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center",
-                              isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
-                            )}>
-                              {isSelected && <div className="w-2 h-2 bg-white rounded-full shadow-sm" />}
+            {currentQuestion ? (
+              <>
+                <CardHeader className="pb-4 pt-10 px-6 sm:px-10 text-center">
+                  <CardTitle className="text-xl sm:text-2xl font-bold leading-tight tracking-tight text-balance font-heading text-slate-900">
+                    {currentQuestion.question}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6 p-6 sm:p-10 pt-4">
+                  <RadioGroup 
+                    value={selectedOption || ""} 
+                    onValueChange={setSelectedOption}
+                    disabled={isAnswered}
+                    className="grid gap-4"
+                  >
+                    {currentQuestion.options.map((option: string, index: number) => {
+                      const isCorrect = option === currentQuestion.correctAnswer;
+                      const isSelected = selectedOption === option;
+                      
+                      return (
+                        <div key={index} className="relative">
+                          <RadioGroupItem
+                            value={option}
+                            id={`option-${index}`}
+                            className="sr-only"
+                          />
+                          <Label
+                            htmlFor={`option-${index}`}
+                            className={cn(
+                              "flex items-center justify-between w-full p-4 rounded-xl border-2 cursor-pointer transition-all text-base font-semibold shadow-sm transition-all duration-200 font-sans",
+                              isSelected ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
+                              isAnswered && isCorrect && "border-emerald-500 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-100",
+                              isAnswered && isSelected && !isCorrect && "border-rose-500 bg-rose-50 text-rose-900 ring-2 ring-rose-100",
+                              isAnswered && !isSelected && !isCorrect && "opacity-40 grayscale-[0.3]"
+                            )}
+                          >
+                            <span className="flex-1 pr-4 leading-relaxed">{option}</span>
+                            <div className="shrink-0 flex items-center justify-center">
+                              {isAnswered && isCorrect && <CheckCircle2 className="text-emerald-600" size={24} />}
+                              {isAnswered && isSelected && !isCorrect && <XCircle className="text-rose-600" size={24} />}
+                              {!isAnswered && (
+                                <div className={cn(
+                                  "w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center",
+                                  isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
+                                )}>
+                                  {isSelected && <div className="w-2 h-2 bg-white rounded-full shadow-sm" />}
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </Label>
                         </div>
-                      </Label>
-                    </div>
-                  );
-                })}
-              </RadioGroup>
+                      );
+                    })}
+                  </RadioGroup>
 
-              {isAnswered && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.98, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className={cn(
-                    "p-6 rounded-[20px] text-sm leading-relaxed border-2 animate-in zoom-in-95 duration-300 shadow-sm",
-                    selectedOption === currentQuestion.correctAnswer 
-                      ? "bg-emerald-50 border-emerald-100 text-emerald-950" 
-                      : "bg-amber-50 border-amber-100 text-amber-950"
+                  {isAnswered && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className={cn(
+                        "p-6 rounded-[20px] text-sm leading-relaxed border-2 animate-in zoom-in-95 duration-300 shadow-sm",
+                        selectedOption === currentQuestion.correctAnswer 
+                          ? "bg-emerald-50 border-emerald-100 text-emerald-950" 
+                          : "bg-amber-50 border-amber-100 text-amber-950"
+                      )}
+                    >
+                      <p className="font-black mb-3 flex items-center gap-2 uppercase tracking-[0.15em] text-[10px] opacity-70">
+                        {selectedOption === currentQuestion.correctAnswer ? (
+                          <CheckCircle2 size={14} className="text-emerald-600" />
+                        ) : (
+                          <AlertCircle size={14} className="text-amber-600" />
+                        )}
+                        EXPLANATION
+                      </p>
+                      <p className="text-base font-medium text-balance leading-relaxed font-sans">{currentQuestion.explanation}</p>
+                    </motion.div>
                   )}
-                >
-                  <p className="font-black mb-3 flex items-center gap-2 uppercase tracking-[0.15em] text-[10px] opacity-70">
-                    {selectedOption === currentQuestion.correctAnswer ? (
-                      <CheckCircle2 size={14} className="text-emerald-600" />
-                    ) : (
-                      <AlertCircle size={14} className="text-amber-600" />
-                    )}
-                    EXPLANATION
-                  </p>
-                  <p className="text-base font-medium text-balance leading-relaxed font-sans">{currentQuestion.explanation}</p>
-                </motion.div>
-              )}
-            </CardContent>
+                </CardContent>
+              </>
+            ) : (
+              <div className="p-12 text-center">
+                <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground opacity-20 mb-4" />
+                <p className="text-muted-foreground">Question data was lost. Please restart the quiz.</p>
+                <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">Restart Quiz</Button>
+              </div>
+            )}
             <CardFooter className="p-6 sm:p-10 pt-0 flex flex-col sm:flex-row justify-between items-center gap-4">
               <Button 
                 variant="ghost" 
