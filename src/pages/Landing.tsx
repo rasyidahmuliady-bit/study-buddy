@@ -55,11 +55,8 @@ export default function Landing() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg" className="h-12 px-8 text-lg gap-2" onClick={() => navigate("/register")}>
-                Start Studying Free
+                Start Studying
                 <ChevronRight size={20} />
-              </Button>
-              <Button size="lg" variant="outline" className="h-12 px-8 text-lg" onClick={() => navigate("/login")}>
-                View Demo
               </Button>
             </div>
           </motion.div>
@@ -92,7 +89,7 @@ export default function Landing() {
       <section className="py-24 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Everything you need to master your courses</h2>
+            <h2 className="text-3xl font-bold mb-4">Stay focused and keep improving your learning</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Built for Generation Z students who prefer interactive, structured, and visually engaging learning experiences.
             </p>
@@ -158,7 +155,7 @@ export default function Landing() {
               Join thousands of students who are already using Study Buddy to ace their exams and stay focused.
             </p>
             <Button size="lg" variant="secondary" className="h-12 px-10 text-lg font-bold" onClick={() => navigate("/register")}>
-              Get Started for Free
+              Get Started
             </Button>
           </div>
           {/* Decorative circles */}

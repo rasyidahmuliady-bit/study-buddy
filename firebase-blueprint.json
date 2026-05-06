@@ -73,6 +73,7 @@
         "materialId": { "type": "string" },
         "currentChunkIndex": { "type": "integer" },
         "timeLeft": { "type": "integer" },
+        "sessionDuration": { "type": "integer" },
         "mode": { "type": "string" },
         "lastUpdated": { "type": "string", "format": "date-time" },
         "completionPercentage": { "type": "integer" },

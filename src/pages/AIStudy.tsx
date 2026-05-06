@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { auth, db, handleFirestoreError, OperationType } from "@/lib/firebase";
 import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
-import { generateStudyChunks } from "@/lib/gemini";
+import { generateStudyChunks, generateVideoRecommendations } from "@/lib/gemini";
 import { 
   BrainCircuit, 
   ChevronLeft, 
@@ -20,7 +20,8 @@ import {
   Trophy,
   FileText,
   Search,
-  Filter
+  Filter,
+  Sparkles
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,8 @@ export default function AIStudy() {
   const queryParams = new URLSearchParams(location.search);
   const materialId = queryParams.get("id");
   const mode = queryParams.get("mode") || "focus";
+  const durationParam = queryParams.get("duration");
+  const defaultDuration = durationParam ? parseInt(durationParam) * 60 : 20 * 60;
 
   const [material, setMaterial] = useState<any>(null);
   const [hubMaterials, setHubMaterials] = useState<any[]>([]);
@@ -57,7 +60,8 @@ export default function AIStudy() {
   const [hubLoading, setHubLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [startTime] = useState(Date.now());
-  const [timeLeft, setTimeLeft] = useState(20 * 60); // 20 minutes in seconds
+  const [sessionDuration, setSessionDuration] = useState(defaultDuration);
+  const [timeLeft, setTimeLeft] = useState(defaultDuration); 
   const [timerActive, setTimerActive] = useState(mode === "pomodoro");
   const [isPaused, setIsPaused] = useState(false);
   const [showSkipWarning, setShowSkipWarning] = useState(false);
@@ -70,6 +74,9 @@ export default function AIStudy() {
   const [isBreak, setIsBreak] = useState(false);
   const [breakTimeLeft, setBreakTimeLeft] = useState(5 * 60); // 5 minute break
   const [weakTopics, setWeakTopics] = useState<string[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recsLoading, setRecsLoading] = useState(false);
+  const [verifiedRecommendations, setVerifiedRecommendations] = useState<any[]>([]);
 
   // Filtering state
   const [searchQuery, setSearchQuery] = useState("");
@@ -88,6 +95,7 @@ export default function AIStudy() {
         materialId,
         currentChunkIndex: index,
         timeLeft: timeRem,
+        sessionDuration,
         mode,
         chunks: studyChunks, // Save the actual content chunks to avoid regeneration
         lastUpdated: new Date().toISOString(),
@@ -153,7 +161,7 @@ export default function AIStudy() {
     const studyTime = Math.round((Date.now() - startTime) / 1000);
     
     // Requirement: Quiz should only cover content studied so far
-    let quizUrl = `/quiz?id=${materialId}&studyTime=${studyTime}&mode=${mode}`;
+    let quizUrl = `/quiz?id=${materialId}&studyTime=${studyTime}&mode=${mode}&duration=${sessionDuration / 60}`;
     
     // If not on the last chunk, tell the quiz to only use content up to current index
     if (currentChunkIndex < chunks.length - 1) {
@@ -167,6 +175,34 @@ export default function AIStudy() {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const simplifyTopic = (topic: string) => {
+    return topic
+      .replace(/Foundations of|Global Philosophy of|Introduction to|Principles of|The history of|Overview of/gi, '')
+      .replace(/and its applications|in the modern world|for university students/gi, '')
+      .trim();
+  };
+
+  const checkVideoAvailability = (url: string): Promise<boolean> => {
+    const videoId = url.match(/(?:v=|\/embed\/|youtu\.be\/)([^&?#/]+)/)?.[1];
+    if (!videoId) return Promise.resolve(false);
+    
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.referrerPolicy = "no-referrer";
+      img.onload = () => {
+        // YouTube returns a 120x90 "not found" icon for invalid video IDs
+        if (img.naturalWidth === 120 && img.naturalHeight === 90) {
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      };
+      img.onerror = () => resolve(false);
+      // mqdefault.jpg is 320x180 for valid videos, and 120x90 for invalid ones
+      img.src = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+    });
   };
 
   useEffect(() => {
@@ -223,16 +259,16 @@ export default function AIStudy() {
       
       let isResuming = false;
       let startIdx = 0;
-      let timeRem = 20 * 60;
+      let timeRem = defaultDuration;
+      let dur = defaultDuration;
       let existingChunks: any[] = [];
 
       if (sessionDoc.exists()) {
         const sessionData = sessionDoc.data();
-        // A study session is considered existing if: user_id matches, material_id matches, and has chunks
-        // We consider it "resumable" if chunks exist. Completion percentage is for UI.
         if (sessionData.chunks && sessionData.chunks.length > 0) {
           startIdx = sessionData.currentChunkIndex || 0;
-          timeRem = sessionData.timeLeft || (20 * 60);
+          timeRem = sessionData.timeLeft || defaultDuration;
+          dur = sessionData.sessionDuration || defaultDuration;
           existingChunks = sessionData.chunks;
           isResuming = true;
         }
@@ -247,6 +283,7 @@ export default function AIStudy() {
           // Instant resume: set state and we're done
           setChunks(existingChunks);
           setCurrentChunkIndex(startIdx);
+          setSessionDuration(dur);
           setTimeLeft(timeRem);
           setSessionLoaded(true);
           setSessionChecked(true);
@@ -343,7 +380,7 @@ export default function AIStudy() {
     setShowPomodoroDialog(false);
     setIsBreak(false);
     if (restartTimer) {
-      setTimeLeft(20 * 60); 
+      setTimeLeft(sessionDuration); 
       setTimerActive(true);
     } else {
       setTimerActive(false);
@@ -352,6 +389,47 @@ export default function AIStudy() {
 
   const progress = chunks.length > 0 ? ((currentChunkIndex + 1) / chunks.length) * 100 : 0;
   const currentChunk = chunks[currentChunkIndex];
+
+  useEffect(() => {
+    const fetchRecs = async () => {
+      if (!currentChunk || !material) return;
+      
+      setRecsLoading(true);
+      setVerifiedRecommendations([]);
+      try {
+        const recs = await generateVideoRecommendations(
+          currentChunk.title,
+          material.subject,
+          currentChunk.content
+        );
+        
+        if (recs && recs.length > 0) {
+          // Validate each recommendation
+          const validationResults = await Promise.all(
+            recs.map(async (video: any) => {
+              const isAvailable = await checkVideoAvailability(video.url);
+              return isAvailable ? video : null;
+            })
+          );
+          
+          const validRecs = validationResults.filter(v => v !== null);
+          setVerifiedRecommendations(validRecs);
+        } else {
+          setVerifiedRecommendations([]);
+        }
+        
+        setRecommendations(recs || []);
+      } catch (error) {
+        console.error("Error fetching recommendations:", error);
+        setRecommendations([]);
+        setVerifiedRecommendations([]);
+      } finally {
+        setRecsLoading(false);
+      }
+    };
+
+    fetchRecs();
+  }, [currentChunkIndex, chunks, material]);
 
   if (materialId && !loading && chunks.length === 0 && sessionChecked) {
     return (
@@ -573,13 +651,13 @@ export default function AIStudy() {
               <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center text-muted-foreground">
                 {searchQuery || selectedSubject !== "all" || selectedStatus !== "all" ? <Search size={40} /> : <BookOpen size={40} />}
               </div>
-              <h2 className="text-2xl font-bold">
-                {searchQuery || selectedSubject !== "all" || selectedStatus !== "all" ? "No matches found" : "No Materials Yet"}
+              <h2 className="text-2xl font-black">
+                {searchQuery || selectedSubject !== "all" || selectedStatus !== "all" ? "No matches found" : "Ready to Start?"}
               </h2>
-              <p className="text-muted-foreground max-w-sm mx-auto">
+              <p className="text-muted-foreground max-w-sm mx-auto font-medium">
                 {searchQuery || selectedSubject !== "all" || selectedStatus !== "all" 
                   ? "Try adjusting your filters or search query to find what you're looking for." 
-                  : "Go to the materials page to upload your first study note or PDF."}
+                  : "Upload a material to begin your first study session and choose a study mode that matches your learning style."}
               </p>
               {hubMaterials.length > 0 && (searchQuery || selectedSubject !== "all" || selectedStatus !== "all") ? (
                 <Button 
@@ -715,62 +793,71 @@ export default function AIStudy() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
           <Card className="max-w-md w-full shadow-2xl border-primary/20 scale-in-center overflow-hidden !rounded-3xl">
             <div className="bg-primary/5 p-8 text-center border-b border-border/50">
-              <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
-                ⏱ Pomodoro Session Complete!
+              <CardTitle className="text-3xl font-black flex items-center justify-center gap-3">
+                <Clock className="text-primary animate-pulse" size={32} />
+                Time to recharge!
               </CardTitle>
-              <div className="mt-4 flex flex-col items-center gap-2">
-                <p className="text-xl font-medium text-slate-700 dark:text-slate-300">
-                  You studied <span className="text-primary font-bold">{currentChunkIndex + 1} / {chunks.length}</span> chunks.
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <p className="text-lg font-medium text-slate-700 dark:text-slate-300">
+                  Great focus! You've reviewed <span className="text-primary font-bold">{currentChunkIndex + 1} / {chunks.length}</span> chunks.
                 </p>
-                <div className="w-full max-w-[200px] h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+                <div className="w-full max-w-[250px] h-2 bg-muted rounded-full overflow-hidden mt-2 p-[2px]">
                   <div 
-                    className="h-full bg-primary transition-all duration-700" 
+                    className="h-full bg-primary rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(var(--primary),0.5)]" 
                     style={{ width: `${((currentChunkIndex + 1) / chunks.length) * 100}%` }}
                   />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mt-6 font-medium uppercase tracking-wider">
-                What would you like to do?
-              </p>
             </div>
             
-            <CardContent className="space-y-4 pt-6 pb-8 px-8">
+            <CardContent className="space-y-4 pt-8 pb-10 px-8">
               <Button 
-                className="w-full flex flex-col h-auto py-4 rounded-2xl font-bold shadow-md gap-1" 
+                className="w-full h-16 rounded-[1.25rem] font-bold shadow-lg shadow-primary/20 gap-3 text-lg" 
                 onClick={() => handleFinishSession(true)}
               >
-                <div className="flex items-center gap-2">
-                  <BrainCircuit size={18} />
-                  <span>Take Quiz</span>
-                </div>
-                <span className="text-xs font-normal opacity-80">quiz based on studied chunks</span>
+                <BrainCircuit size={24} />
+                Validate Learning (Start Quiz)
               </Button>
 
-              <Button 
-                variant="secondary" 
-                className="w-full flex flex-col h-auto py-4 rounded-2xl font-bold bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 gap-1" 
-                onClick={handleTakeBreak}
-              >
-                <div className="flex items-center gap-2">
-                  <Clock size={18} />
-                  <span>Take 5-min Break</span>
-                </div>
-                <span className="text-xs font-normal opacity-80 text-green-600/70">start break timer</span>
-              </Button>
-
-              {currentChunkIndex + 1 < chunks.length && (
+              <div className="grid grid-cols-2 gap-3">
                 <Button 
-                  variant="outline" 
-                  className="w-full flex flex-col h-auto py-4 rounded-2xl font-bold border-2 hover:bg-muted/50 gap-1" 
-                  onClick={() => handleContinueStudying(true)}
+                  variant="secondary" 
+                  className="flex flex-col h-auto py-5 rounded-2xl font-bold bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 gap-1 shadow-sm" 
+                  onClick={handleTakeBreak}
                 >
                   <div className="flex items-center gap-2">
-                    <Play size={18} />
-                    <span>Continue Studying</span>
+                    <Clock size={16} />
+                    <span>Take Break</span>
                   </div>
-                  <span className="text-xs font-normal opacity-70">resume remaining chunks</span>
+                  <span className="text-[10px] font-normal opacity-70">5 min recharge</span>
                 </Button>
-              )}
+
+                {currentChunkIndex + 1 < chunks.length ? (
+                  <Button 
+                    variant="outline" 
+                    className="flex flex-col h-auto py-5 rounded-2xl font-bold border-2 hover:bg-muted/30 gap-1 shadow-sm transition-all" 
+                    onClick={() => handleContinueStudying(true)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Play size={16} />
+                      <span>Continue</span>
+                    </div>
+                    <span className="text-[10px] font-normal opacity-70">resume timer</span>
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="ghost" 
+                    className="flex flex-col h-auto py-5 rounded-2xl font-bold gap-1 text-muted-foreground" 
+                    onClick={() => handleFinishSession(false)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ArrowLeft size={16} />
+                      <span>Finish</span>
+                    </div>
+                    <span className="text-[10px] font-normal opacity-70">exit to hub</span>
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -816,54 +903,79 @@ export default function AIStudy() {
         </div>
       )}
 
-      <div className="bg-background pb-6 pt-2">
-        <div className="flex items-center justify-between mb-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/materials")} className="gap-2 -ml-2">
-            <ArrowLeft size={16} />
-            Back to Materials
-          </Button>
-          <div className="flex items-center gap-3">
+      <div className="bg-card border border-border/50 rounded-[2.5rem] p-6 mb-8 shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex flex-col gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/ai-study")} className="w-fit h-7 px-2 -ml-2 mb-2 gap-1.5 text-muted-foreground hover:text-primary transition-all font-bold">
+              <ArrowLeft size={14} />
+              Exit to Hub
+            </Button>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary border-none px-4 py-1 font-black text-[11px] uppercase tracking-wider">
+                {mode} Mode Active
+              </Badge>
+              {sessionLoaded && (
+                <Badge className="bg-blue-500 text-white border-none rounded-full px-3 py-0.5 text-[10px] font-bold animate-in fade-in">
+                  Resumed Session
+                </Badge>
+              )}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-primary mt-1">{material?.fileName}</h1>
+          </div>
+
+          <div className="flex items-center gap-4 self-end md:self-auto">
             <Button 
               variant="outline" 
               size="sm" 
-              className="rounded-full gap-2 h-8"
+              className={cn(
+                "rounded-full gap-2 h-11 px-5 border-2 transition-all",
+                isPaused ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" : "hover:bg-primary/5"
+              )}
               onClick={() => setIsPaused(!isPaused)}
             >
-              {isPaused ? <Play size={12} /> : <Pause size={12} />}
-              {isPaused ? "Resume" : "Pause"}
+              {isPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
+              <span className="font-bold">{isPaused ? "Resume Session" : "Pause Focus"}</span>
             </Button>
 
             {mode === "pomodoro" && (
               <div className={cn(
-                "flex items-center gap-2 px-3 py-1 rounded-full border transition-colors",
-                timeLeft < 60 ? "bg-red-50 border-red-200 text-red-600 animate-pulse" : "bg-muted/50 border-border text-muted-foreground"
+                "flex flex-col items-center justify-center min-w-[80px] h-11 px-4 rounded-full border-2 transition-all duration-500",
+                timeLeft < 60 
+                  ? "bg-red-50 border-red-300 text-red-600 animate-pulse shadow-lg shadow-red-100" 
+                  : "bg-muted/20 border-border/50 text-foreground"
               )}>
-                <Clock size={14} />
-                <span className="text-xs font-mono font-bold">{formatTime(timeLeft)}</span>
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className={timeLeft < 60 ? "text-red-500" : "text-primary"} />
+                  <span className="text-lg font-mono font-black tabular-nums">{formatTime(timeLeft)}</span>
+                </div>
               </div>
             )}
-            <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px] uppercase font-bold tracking-tight">
-              {mode} Mode
-            </Badge>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">{material?.fileName}</h1>
-            <div className="flex items-center justify-between text-sm mb-4">
+        <div className="mt-8 space-y-3">
+          <div className="flex justify-between items-end">
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Course Coverage</span>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-primary">Chunk {currentChunkIndex + 1} of {chunks.length}</span>
-                {sessionLoaded && (
-                  <Badge variant="outline" className="text-[10px] py-0 border-blue-200 text-blue-600 bg-blue-50">
-                    Resumed
-                  </Badge>
-                )}
+                <span className="text-xl font-black text-primary">Chunk {currentChunkIndex + 1}</span>
+                <span className="text-sm font-bold text-muted-foreground mt-1">of {chunks.length}</span>
               </div>
-              <span className="font-bold text-muted-foreground">{Math.round(progress)}% Complete</span>
             </div>
-            <Progress value={progress} className="h-2 w-full bg-muted" />
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Mastery</span>
+              <span className="text-xl font-black">{Math.round(progress)}%</span>
+            </div>
           </div>
+          <div className="relative h-3 w-full bg-muted rounded-full overflow-hidden p-[2px]">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              className="h-full bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.3)]" 
+            />
+          </div>
+        </div>
+      </div>
 
           {mode === "spaced" && weakTopics.length > 0 && (
             <motion.div
@@ -902,8 +1014,6 @@ export default function AIStudy() {
               </Alert>
             </motion.div>
           )}
-        </div>
-      </div>
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -950,6 +1060,125 @@ export default function AIStudy() {
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {formatMarkdown(chunks[currentChunkIndex]?.content)}
                   </ReactMarkdown>
+                </div>
+              </div>
+
+              {/* Dynamic Learning Resources */}
+              <div className="w-full md:w-80 bg-muted/30 border-l border-border/50 p-6 self-stretch">
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Sparkles className="text-primary animate-pulse" size={18} />
+                    <h3 className="text-xs font-black uppercase tracking-widest text-primary">Learning Resources</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <p className="text-[11px] font-bold text-muted-foreground leading-tight px-1 italic">
+                      AI-curated videos to help you master "{chunks[currentChunkIndex]?.title}":
+                    </p>
+
+                    {recsLoading ? (
+                      <div className="py-12 flex flex-col items-center gap-3 animate-in fade-in">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Searching Knowledge...</p>
+                      </div>
+                    ) : verifiedRecommendations && verifiedRecommendations.length > 0 ? (
+                      <div className="space-y-3">
+                        {verifiedRecommendations.map((video, idx) => {
+                          const videoId = video.url.match(/(?:v=|\/embed\/|youtu\.be\/)([^&?#/]+)/)?.[1];
+                          const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+                          
+                          return (
+                            <motion.div
+                              key={idx}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.1 }}
+                              className="group/card p-0 rounded-2xl bg-background border border-border/60 hover:border-primary/40 hover:shadow-lg transition-all duration-300 overflow-hidden"
+                            >
+                              <div className="aspect-video w-full relative overflow-hidden bg-muted">
+                                <img 
+                                  src={thumbnailUrl} 
+                                  alt={video.title}
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110"
+                                />
+                                <div className="absolute inset-0 bg-black/20 group-hover/card:bg-black/0 transition-colors" />
+                                <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">
+                                  YouTube
+                                </div>
+                              </div>
+                              <div className="p-3 space-y-2">
+                                <div>
+                                  <h4 className="text-[11px] font-black leading-tight line-clamp-2 group-hover/card:text-primary transition-colors">
+                                    {video.title}
+                                  </h4>
+                                  <p className="text-[9px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
+                                    {video.channel}
+                                  </p>
+                                </div>
+                                <a 
+                                  href={video.url}
+                                  target="_blank"
+                                  rel="noreferrer noopener"
+                                  className="mt-1 inline-flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-primary/5 hover:bg-primary text-primary hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
+                                >
+                                  <Play size={12} fill="currentColor" className="group-hover/card:animate-pulse" />
+                                  Watch Video
+                                </a>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-10 px-4 text-center space-y-4 animate-in fade-in">
+                        <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mx-auto mb-2 opacity-30">
+                          <AlertCircle size={18} className="text-muted-foreground" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[11px] font-bold text-slate-700 leading-tight">
+                            We could not find verified videos for this topic yet.
+                          </p>
+                          <p className="text-[10px] text-muted-foreground italic px-4">
+                            You can manually search for educational resources on YouTube.
+                          </p>
+                        </div>
+                        
+                        <div className="pt-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="w-full h-auto min-h-10 py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-wide border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 flex items-center justify-center gap-2 whitespace-normal leading-tight text-center"
+                            onClick={() => {
+                              const simplifiedTopic = simplifyTopic(currentChunk?.title || "");
+                              window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(simplifiedTopic + " educational")}`, "_blank");
+                            }}
+                          >
+                            <Search size={12} className="shrink-0" />
+                            <span>
+                              Search YouTube: <span className="text-primary/70">{simplifyTopic(currentChunk?.title || "")}</span>
+                            </span>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {!recsLoading && verifiedRecommendations.length > 0 && (
+                      <div className="mt-4 p-4 rounded-2xl bg-primary/5 border border-primary/10">
+                        <h4 className="text-[10px] font-black uppercase mb-2 text-primary flex items-center gap-2">
+                          <BrainCircuit size={12} />
+                          Pro Mastery Tip
+                        </h4>
+                        <p className="text-[10px] leading-relaxed text-slate-600 font-medium italic">
+                          "Visual learning reinforces the mental models you build during reading. Watch at least one of these to solidify today's session."
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-auto pt-6 opacity-30">
+                    <BrainCircuit size={32} className="text-primary/20 mx-auto" />
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -1006,68 +1235,76 @@ export default function AIStudy() {
         </motion.div>
       </AnimatePresence>
 
-      <Card className="border-border shadow-sm bg-muted/5 p-6 mb-6">
-        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <BrainCircuit className="text-primary" size={20} />
-          System Logic: {mode.charAt(0).toUpperCase() + mode.slice(1)} Mode
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-          <div className="space-y-2">
-            <h4 className="font-bold flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px]">1</div>
-              Adaptive Chunking
+      <Card className="border-border/40 shadow-sm bg-muted/5 p-8 mb-8 rounded-[3rem]">
+        <div className="flex items-center gap-3 mb-6">
+          <BrainCircuit className="text-primary" size={24} />
+          <h3 className="text-xl font-black tracking-tight">
+            How {mode.charAt(0).toUpperCase() + mode.slice(1)} Mode works
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+          <div className="space-y-3 p-6 rounded-[2rem] bg-white shadow-sm border border-border/50 transition-all hover:shadow-md">
+            <h4 className="font-black flex items-center gap-2 text-primary">
+              <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-[11px] font-black">1</div>
+              Smart Chunking
             </h4>
-            <p className="text-muted-foreground leading-relaxed">
-              Our AI analyzes the material length and breaks it into {chunks.length} manageable chunks (300-500 words each). This ensures full coverage without cognitive overload.
+            <p className="text-muted-foreground leading-relaxed font-medium">
+              Our AI breaks your material into {chunks.length} manageable sections. Research shows that studying in smaller blocks improves retention by up to 40%.
             </p>
           </div>
-          <div className="space-y-2">
-            <h4 className="font-bold flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px]">2</div>
-              {mode === "pomodoro" ? "Pomodoro Timing" : mode === "spaced" ? "Weak Spot Targeting" : "Self-Paced Learning"}
+          <div className="space-y-3 p-6 rounded-[2rem] bg-white shadow-sm border border-border/50 transition-all hover:shadow-md">
+            <h4 className="font-black flex items-center gap-2 text-primary">
+              <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-[11px] font-black">2</div>
+              {mode === "pomodoro" ? "Focus Timer" : mode === "spaced" ? "Retention Engine" : "Self-Paced Control"}
             </h4>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed font-medium">
               {mode === "pomodoro" 
-                ? "Focus for 20 minutes with minimal distractions. Navigation is restricted to ensure you actually process the content." 
+                ? "The deep-work timer ensures you stay fully present. Your navigation is focused on the current task to prevent mental fatigue." 
                 : mode === "spaced" 
-                ? "Prioritizing sections you previously struggled with based on last quiz results." 
-                : "Free navigation allows you to study at your own pace and start the quiz whenever you feel ready."}
+                ? "We automatically highlight concepts you missed previously, reinforcing neurological pathways for difficult information." 
+                : "You have total freedom. Move through content as you wish and initiate the validation quiz whenever you're ready."}
             </p>
           </div>
-          <div className="space-y-2">
-            <h4 className="font-bold flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px]">3</div>
-              Smart Quiz Generation
+          <div className="space-y-3 p-6 rounded-[2rem] bg-white shadow-sm border border-border/50 transition-all hover:shadow-md">
+            <h4 className="font-black flex items-center gap-2 text-primary">
+              <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-[11px] font-black">3</div>
+              Adaptive Testing
             </h4>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed font-medium">
               {mode === "spaced" 
-                ? "Quizzes are meticulously crafted to re-test topics you previously struggled with, helping you turn weak points into strengths through active recall." 
-                : "Quizzes strictly adapt to your progress. Whether you finish a full session or study just few chunks, the AI only tests you on material you have actually reviewed."}
+                ? "The quiz engine dynamically adjusts question difficulty based on your history, focusing on converting weak points into mastery." 
+                : "The quiz only tests you on the chunks you've actually studied during this session. This provides accurate feedback on your immediate learning."}
             </p>
           </div>
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 bg-blue-50 border-blue-100 flex gap-3">
-          <BookOpen className="text-blue-500 shrink-0" size={20} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="p-6 bg-blue-50/50 border-blue-100 rounded-[2rem] flex gap-4 transition-all hover:bg-blue-50 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 shrink-0">
+            <BookOpen size={20} strokeWidth={2.5} />
+          </div>
           <div>
-            <h4 className="font-bold text-blue-700 text-sm mb-1">Study Tip</h4>
-            <p className="text-xs text-blue-600">Try to summarize this chunk in your own words before moving to the next one.</p>
+            <h4 className="font-black text-blue-900 text-sm mb-1 uppercase tracking-wider">Expert Tip</h4>
+            <p className="text-xs text-blue-700/80 font-medium leading-relaxed italic">"Try explaining the current core concept to an imaginary friend before moving to the next chunk."</p>
           </div>
         </Card>
-        <Card className="p-4 bg-purple-50 border-purple-100 flex gap-3">
-          <BrainCircuit className="text-purple-500 shrink-0" size={20} />
+        <Card className="p-6 bg-purple-50/50 border-purple-100 rounded-[2rem] flex gap-4 transition-all hover:bg-purple-50 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 shrink-0">
+            <Sparkles size={20} strokeWidth={2.5} />
+          </div>
           <div>
-            <h4 className="font-bold text-purple-700 text-sm mb-1">AI Insight</h4>
-            <p className="text-xs text-purple-600">This section contains key definitions that are likely to appear in your quiz.</p>
+            <h4 className="font-black text-purple-900 text-sm mb-1 uppercase tracking-wider">AI Insight</h4>
+            <p className="text-xs text-purple-700/80 font-medium leading-relaxed italic">"This material has high complexity. Don't rush; your brain needs 20% more time to process technical definitions."</p>
           </div>
         </Card>
-        <Card className="p-4 bg-green-50 border-green-100 flex gap-3">
-          <Target className="text-green-500 shrink-0" size={20} />
+        <Card className="p-6 bg-green-50/50 border-green-100 rounded-[2rem] flex gap-4 transition-all hover:bg-green-50 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-600 shrink-0">
+            <Target size={20} strokeWidth={2.5} />
+          </div>
           <div>
-            <h4 className="font-bold text-green-700 text-sm mb-1">Goal</h4>
-            <p className="text-xs text-green-600">Complete all {chunks.length} chunks to unlock the practice quiz.</p>
+            <h4 className="font-black text-green-900 text-sm mb-1 uppercase tracking-wider">Session Goal</h4>
+            <p className="text-xs text-green-700/80 font-medium leading-relaxed italic">"Complete all {chunks.length} sections and achieve ≥ 80% on the quiz to maintain your mastery streak."</p>
           </div>
         </Card>
       </div>

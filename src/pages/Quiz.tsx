@@ -35,6 +35,7 @@ export default function Quiz() {
   const mode = queryParams.get("mode") || "focus";
   const limitIndex = queryParams.get("limitIndex") ? parseInt(queryParams.get("limitIndex")!) : null;
   const initialStudyTime = parseInt(queryParams.get("studyTime") || "0");
+  const duration = queryParams.get("duration") || "20";
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -47,6 +48,7 @@ export default function Quiz() {
   const [startTime] = useState(Date.now());
   const [totalStudyTime, setTotalStudyTime] = useState(0);
   const [wrongAnswers, setWrongAnswers] = useState<any[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!materialId && location.pathname === "/quiz") {
@@ -100,7 +102,7 @@ export default function Quiz() {
       }
     } catch (error: any) {
       console.error("Error fetching quiz:", error);
-      // We keep questions as empty, which will trigger the error UI
+      setErrorMsg(error.message || "An unknown error occurred during quiz generation.");
     } finally {
       setLoading(false);
     }
@@ -214,7 +216,14 @@ export default function Quiz() {
         </div>
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-bold">Quiz Data Unavailable</h2>
-          <p className="text-muted-foreground">We couldn't generate questions for this material. This can happen if the content is too brief or if there was a technical glitch.</p>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            {errorMsg || "We couldn't generate questions for this material. This can happen if the content is too brief or if there was a technical glitch."}
+          </p>
+          {errorMsg?.includes("API key") && (
+            <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-xl text-orange-800 text-sm font-medium">
+              Note: The AI features require a valid GEMINI_API_KEY. Please ensure it's set in your environment.
+            </div>
+          )}
         </div>
         <div className="flex gap-4">
           <Button variant="outline" onClick={() => navigate("/materials")}>Back to Materials</Button>
@@ -296,10 +305,10 @@ export default function Quiz() {
                 {mode === "pomodoro" ? (
                   <Button 
                     className="gap-2 w-full py-6 rounded-xl text-lg font-bold shadow-md" 
-                    onClick={() => navigate(`/ai-study?id=${materialId}&mode=pomodoro`)}
+                    onClick={() => navigate(`/ai-study?id=${materialId}&mode=pomodoro&duration=${duration}`)}
                   >
                     <Clock size={20} />
-                    Next Study Session (20m)
+                    Next Study Session ({duration}m)
                   </Button>
                 ) : mode === "spaced" ? (
                   <div className="flex flex-col gap-3">

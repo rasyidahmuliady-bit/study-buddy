@@ -28,6 +28,7 @@ export default function StudySetup() {
 
   const [material, setMaterial] = useState<any>(null);
   const [selectedMode, setSelectedMode] = useState<string>("focus");
+  const [pomodoroDuration, setPomodoroDuration] = useState<number>(20);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,7 +59,8 @@ export default function StudySetup() {
       id: "pomodoro",
       name: "Pomodoro Mode",
       icon: Clock,
-      description: "20-minute study session with a countdown. Ideal for high focus.",
+      description: "Timed study sessions with breaks and quizzes after each completed chunk.",
+      details: "Choose your session length. After each timer ends, take a 5-minute break or jump into a quiz.",
       color: "text-red-500",
       bg: "bg-red-50",
       border: "border-red-200"
@@ -67,7 +69,8 @@ export default function StudySetup() {
       id: "focus",
       name: "Focus Mode",
       icon: Target,
-      description: "No timer. Study at your own pace and start the quiz manually.",
+      description: "Self-paced learning without timer pressure.",
+      details: "No countdown. Move through content at your own speed and start the quiz when you feel ready.",
       color: "text-blue-500",
       bg: "bg-blue-50",
       border: "border-blue-200"
@@ -76,7 +79,8 @@ export default function StudySetup() {
       id: "spaced",
       name: "Spaced Repetition",
       icon: RotateCcw,
-      description: "Focuses on reviewing content you find difficult. Allows re-quizzing.",
+      description: "Review weak topics using repeated AI-generated quizzes.",
+      details: "AI focuses on concepts you struggled with in past quizzes. Best for long-term retention.",
       color: "text-purple-500",
       bg: "bg-purple-50",
       border: "border-purple-200"
@@ -84,51 +88,81 @@ export default function StudySetup() {
   ];
 
   const handleStart = () => {
-    // Navigate to the AI Study page with the selected mode as a parameter
-    navigate(`/ai-study?id=${materialId}&mode=${selectedMode}`);
+    // Navigate to the AI Study page with the selected mode and pomodoro duration as parameters
+    navigate(`/ai-study?id=${materialId}&mode=${selectedMode}${selectedMode === 'pomodoro' ? `&duration=${pomodoroDuration}` : ''}`);
   };
 
   if (loading) return <div className="flex items-center justify-center p-20">Loading...</div>;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/materials")} className="gap-2">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+      <Button variant="ghost" size="sm" onClick={() => navigate("/ai-study")} className="gap-2 hover:bg-primary/5 transition-colors">
         <ArrowLeft size={16} />
-        Back to Materials
+        Back to AI Study Hub
       </Button>
 
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Choose Your Study Mode</h1>
-        <p className="text-muted-foreground">Select a technique to study "{material?.fileName}"</p>
+      <div className="text-center space-y-3">
+        <h1 className="text-4xl font-black tracking-tight text-primary">Optimize Your Learning</h1>
+        <p className="text-muted-foreground text-lg">Choose a study mode that matches your learning style today.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {studyModes.map((mode) => (
-          <button
+          <div
             key={mode.id}
             onClick={() => setSelectedMode(mode.id)}
             className={cn(
-              "text-left p-6 rounded-2xl border-2 transition-all group relative",
+              "text-left p-8 rounded-[2rem] border-2 transition-all group relative cursor-pointer flex flex-col h-full",
               selectedMode === mode.id 
-                ? cn(mode.border, "ring-2 ring-primary bg-card scale-[1.02] shadow-md") 
-                : "border-border hover:border-muted-foreground bg-muted/30 opacity-70 hover:opacity-100"
+                ? cn(mode.border, "ring-4 ring-primary/10 bg-card scale-[1.02] shadow-xl") 
+                : "border-border hover:border-muted-foreground/30 bg-muted/20 opacity-80 hover:opacity-100"
             )}
           >
             {selectedMode === mode.id && (
-              <div className="absolute top-3 right-3">
-                <Badge className="bg-primary text-white">Selected</Badge>
+              <div className="absolute top-4 right-4">
+                <Badge className="bg-primary text-white border-none px-3 py-1 scale-110">Active</Badge>
               </div>
             )}
-            <div className={cn("inline-flex p-3 rounded-xl mb-4", mode.bg)}>
-              <mode.icon className={mode.color} size={24} />
+            <div className={cn("inline-flex p-4 rounded-2xl mb-6 w-fit", mode.bg)}>
+              <mode.icon className={mode.color} size={28} />
             </div>
-            <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">{mode.name}</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{mode.description}</p>
-          </button>
+            <h3 className="text-xl font-black mb-3 group-hover:text-primary transition-colors">{mode.name}</h3>
+            <p className="text-sm font-semibold mb-4 leading-relaxed">{mode.description}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed mt-auto flex-grow-0 pt-4 border-t border-border/50 italic opacity-70">
+              {mode.details}
+            </p>
+          </div>
         ))}
       </div>
 
-      <Card className="border-primary/20 bg-primary/5">
+      {selectedMode === "pomodoro" && (
+        <Card className="rounded-[2rem] border-red-100 bg-red-50/30 animate-in slide-in-from-bottom-4 duration-300">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-sm font-black uppercase tracking-widest text-red-600 flex items-center justify-center gap-2">
+              <Clock size={16} />
+              Customize Timer
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex justify-center gap-3 p-6 pt-2">
+            {[15, 20, 25, 30].map((mins) => (
+              <Button
+                key={mins}
+                type="button"
+                variant={pomodoroDuration === mins ? "default" : "outline"}
+                className={cn(
+                  "rounded-full px-6 h-12 font-bold transition-all",
+                  pomodoroDuration === mins ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200" : "border-red-200 text-red-600 hover:bg-red-50"
+                )}
+                onClick={() => setPomodoroDuration(mins)}
+              >
+                {mins} min
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="rounded-[2.5rem] border-primary/20 bg-primary/5 shadow-2xl shadow-primary/5 overflow-hidden">
         <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-white rounded-full shadow-sm">

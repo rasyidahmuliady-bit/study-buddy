@@ -1,16 +1,25 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const getApiKey = () => {
-  // Direct check for Vite environment variable (standard for Vercel + Vite)
-  const viteKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (viteKey && viteKey !== "MY_GEMINI_API_KEY") {
-    return viteKey;
+  // Always use process.env.GEMINI_API_KEY for the Gemini API as per platform rules.
+  // This is injected by the platform and defined in vite.config.ts for the client.
+  try {
+    const key = process.env.GEMINI_API_KEY;
+    if (key && key !== "MY_GEMINI_API_KEY" && key !== "" && key !== "undefined" && key !== "null") {
+      return key;
+    }
+  } catch (e) {
+    // Falls back gracefully
   }
 
-  // Fallback to process.env (Standard for Node/AI Studio environments)
-  const nodeKey = process.env.GEMINI_API_KEY;
-  if (nodeKey && nodeKey !== "MY_GEMINI_API_KEY") {
-    return nodeKey;
+  // Fallback to import.meta.env if process.env is missing (sometimes happens in certain Vite setups)
+  try {
+    const viteKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    if (viteKey && viteKey !== "MY_GEMINI_API_KEY" && viteKey !== "" && viteKey !== "undefined" && viteKey !== "null") {
+      return viteKey;
+    }
+  } catch (e) {
+    // Falls back gracefully
   }
 
   return "";
@@ -18,12 +27,17 @@ const getApiKey = () => {
 
 const apiKey = getApiKey();
 if (!apiKey) {
-  console.error("DEBUG: Gemini API key is missing from environment variables.");
+  console.warn("Gemini API key is not set. AI features will be disabled. Please set GEMINI_API_KEY in your environment.");
 }
 
 const ai = new GoogleGenAI({ apiKey });
 
+export const hasApiKey = !!apiKey;
+
 export async function generateStudyChunks(content: string, weakTopics?: string[]) {
+  if (!hasApiKey) {
+    throw new Error("API key is missing. Please set GEMINI_API_KEY in your environment variables.");
+  }
   const wordCount = content.split(/\s+/).length;
   // Adaptive Logic: Aim for ~300-500 words per chunk
   const targetChunks = Math.max(1, Math.ceil(wordCount / 400));
@@ -73,10 +87,78 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
       }
     }
   });
-  return JSON.parse(response.text);
+  const text = response.text || "[]";
+  const cleanJson = text.replace(/```json\s?|```/g, "").trim();
+  try {
+    return JSON.parse(cleanJson);
+  } catch (e) {
+    console.error("Failed to parse AI chunks response:", text);
+    return [];
+  }
+}
+
+export async function generateVideoRecommendations(topic: string, subject?: string, context?: string) {
+  if (!hasApiKey) {
+    return []; // Return empty instead of throwing for recommendations to be less disruptive
+  }
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `You are an educational content curator with access to real-time search.
+    Find 2-3 REAL, high-quality educational YouTube videos that explain the core concepts of: "${topic}" ${subject ? `(Subject: ${subject})` : ""}.
+    
+    CONTEXT:
+    ${context?.slice(0, 1000)}
+    
+    STRATEGY:
+    - If the topic title is long or academic (e.g., "Foundations and Global Philosophy of Inclusive Education"), DO NOT search for the exact title.
+    - Instead, EXTRACT simplified educational keywords (e.g., "Inclusive Education", "Philosophy of Inclusion", "Inclusive Classroom").
+    - Use these keywords to find the most popular and authoritative videos from trusted sources.
+    
+    YOUR MISSION:
+    - Use your SEARCH tool to find the most relevant, popular, and currently available educational videos.
+    - Prioritize channels: Khan Academy, CrashCourse, TED-Ed, 3Blue1Brown, Kurzgesagt, freeCodeCamp, or Veritasium.
+    - YOU MUST provide DIRECT YouTube URLs that work.
+    - ABSOLUTELY NO HALLUCINATIONS. If you can't find a direct, verifiable link using search, return an empty array [].
+    
+    Each recommendation MUST include:
+    1. title: The exact video title.
+    2. channel: The official channel name.
+    3. description: A helpful 1-sentence summary.
+    4. url: The direct watch link (starts with https://www.youtube.com/watch?v=).
+    
+    Output: JSON array of objects.`,
+    config: {
+      tools: [{ googleSearch: {} }],
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            channel: { type: Type.STRING },
+            description: { type: Type.STRING },
+            url: { type: Type.STRING }
+          },
+          required: ["title", "channel", "description", "url"]
+        }
+      }
+    }
+  });
+  const text = response.text || "[]";
+  const cleanJson = text.replace(/```json\s?|```/g, "").trim();
+  try {
+    return JSON.parse(cleanJson);
+  } catch (e) {
+    console.error("Failed to parse AI recommendations response:", text);
+    return [];
+  }
 }
 
 export async function generateQuiz(content: string, seenQuestions: string[] = []) {
+  if (!hasApiKey) {
+    throw new Error("API key is missing. Cannot generate quiz.");
+  }
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Generate a 5-question multiple choice quiz based on the following study material. 
@@ -128,5 +210,12 @@ export async function generateQuiz(content: string, seenQuestions: string[] = []
       }
     }
   });
-  return JSON.parse(response.text);
+  const text = response.text || "[]";
+  const cleanJson = text.replace(/```json\s?|```/g, "").trim();
+  try {
+    return JSON.parse(cleanJson);
+  } catch (e) {
+    console.error("Failed to parse AI quiz response:", text);
+    throw new Error("Invalid quiz data format received from AI.");
+  }
 }

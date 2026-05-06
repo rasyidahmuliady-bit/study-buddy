@@ -57,7 +57,7 @@ service cloud.firestore {
 
     function isValidSession(data) {
       return data.keys().hasAll(['userId', 'materialId', 'mode', 'chunks']) &&
-             data.keys().hasOnly(['userId', 'materialId', 'mode', 'currentChunkIndex', 'timeLeft', 'lastUpdated', 'completionPercentage', 'chunks']) &&
+             data.keys().hasOnly(['userId', 'materialId', 'mode', 'currentChunkIndex', 'timeLeft', 'sessionDuration', 'lastUpdated', 'completionPercentage', 'chunks']) &&
              data.userId == request.auth.uid &&
              data.materialId is string &&
              data.mode is string &&

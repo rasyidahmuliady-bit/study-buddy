@@ -350,8 +350,8 @@ export default function Dashboard() {
           
           {/* Section 1: Continue Learning (Primary Action) */}
           <Card className={cn(
-            "rounded-[2rem] border-2 transition-all duration-300 overflow-hidden relative group",
-            activeSession ? "border-primary/30 bg-primary/5 shadow-xl shadow-primary/5" : "border-border/50 bg-card"
+            "rounded-[2.5rem] border-2 transition-all duration-300 overflow-hidden relative group shadow-sm",
+            activeSession ? "border-primary/20 bg-primary/5 hover:shadow-xl hover:shadow-primary/5" : "border-border/50 bg-card hover:border-primary/20"
           )}>
             <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
               <BrainCircuit size={200} />
@@ -361,50 +361,58 @@ export default function Dashboard() {
               <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="flex-1 space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary border-none">
-                      {activeSession ? `RESUME: ${activeSession.mode.toUpperCase()}` : "START NEW"}
+                    <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary border-none px-3 py-0.5 font-black text-[10px] uppercase tracking-wider">
+                      {activeSession ? `Resume: ${activeSession.mode}` : "Your Journey"}
                     </Badge>
                   </div>
                   
                   {activeSession ? (
                     <div>
-                      <h2 className="text-2xl font-bold mb-2">Continue studying "{activeSession.materialName}"</h2>
+                      <h2 className="text-3xl font-black mb-2 tracking-tight">Continue studying "{activeSession.materialName}"</h2>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 font-bold">
                           <CheckCircle2 size={16} className="text-green-500" />
-                          {activeSession.completionPercentage}% Complete
+                          {activeSession.completionPercentage}% Progress
                         </div>
-                        <div className="flex items-center gap-1.5 font-mono">
-                          <Clock size={16} />
+                        <div className="flex items-center gap-1.5 font-mono font-bold">
+                          <Clock size={16} className="text-primary" />
                           {activeSession.timeLeft ? `${Math.floor(activeSession.timeLeft / 60)}m left` : "Self-paced"}
                         </div>
                       </div>
-                      <Progress value={activeSession.completionPercentage} className="h-2 mb-6" />
+                      <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden p-[2px] mb-6">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${activeSession.completionPercentage}%` }} />
+                      </div>
                     </div>
                   ) : (
                     <div>
-                      <h2 className="text-2xl font-bold mb-2">Ready to expand your knowledge?</h2>
-                      <p className="text-muted-foreground">Choose a material to start a structured Pomodoro or Focus session.</p>
+                      <h2 className="text-3xl font-black mb-2 tracking-tight">Ready to boost your expertise?</h2>
+                      <p className="text-muted-foreground font-medium">Select a study material to start an AI-powered mastery session.</p>
+                      {recentMaterials.length === 0 && (
+                        <p className="text-sm text-primary mt-4 font-bold flex items-center gap-2 bg-primary/10 w-fit px-4 py-2 rounded-xl border border-primary/20 animate-pulse">
+                          <Sparkles size={16} />
+                          Upload your first material to begin!
+                        </p>
+                      )}
                     </div>
                   )}
 
                   <div className="flex items-center gap-4">
                     <Button 
                       size="lg" 
-                      className="rounded-full px-8 h-12 gap-2 shadow-lg shadow-primary/20"
+                      className="rounded-full px-10 h-14 font-black transition-all shadow-xl shadow-primary/20 hover:scale-105 active:scale-95"
                       onClick={() => {
                         if (activeSession) {
                           navigate(`/ai-study?id=${activeSession.materialId}&mode=${activeSession.mode}`);
                         } else {
-                          navigate("/materials");
+                          navigate("/ai-study");
                         }
                       }}
                     >
                       {activeSession ? "Resume Session" : "Choose Material"}
-                      <ChevronRight size={18} />
+                      <ChevronRight size={20} className="ml-1" />
                     </Button>
                     {activeSession && (
-                      <Button variant="ghost" className="rounded-full text-muted-foreground" onClick={() => navigate("/materials")}>
+                      <Button variant="ghost" className="rounded-full text-muted-foreground font-bold hover:bg-primary/5" onClick={() => navigate("/ai-study")}>
                         Different Material
                       </Button>
                     )}
@@ -413,12 +421,12 @@ export default function Dashboard() {
                 
                 <div className="hidden md:block w-px h-32 bg-border/50" />
                 
-                <div className="w-full md:w-auto min-w-[200px] space-y-4">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Recommended Next step</p>
+                <div className="w-full md:w-auto min-w-[220px] space-y-4">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Suggested next step</p>
                   <div className="space-y-4">
-                    <div className="p-4 rounded-2xl bg-background/50 border border-border/50">
-                      <p className="text-sm font-bold mb-1">{recommendation?.mode || "Focus Mode"}</p>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground italic">"{recommendation?.reason}"</p>
+                    <div className="p-5 rounded-3xl bg-background border border-border/50 shadow-sm">
+                      <p className="text-xs font-black mb-1.5 uppercase text-primary tracking-wider">{recommendation?.mode || "Focus Mode"}</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground font-medium italic opacity-80">"{recommendation?.reason}"</p>
                     </div>
                   </div>
                 </div>
@@ -429,13 +437,13 @@ export default function Dashboard() {
           {/* Section 2: Weak Topics & Progress Analysis */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Weak Topics to Review */}
-            <Card className="rounded-[2rem] border-border/50 shadow-sm overflow-hidden">
+            <Card className="rounded-[2.5rem] border-border/50 shadow-sm overflow-hidden bg-white">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <CardTitle className="text-lg font-black flex items-center gap-2">
                   <BrainCircuit className="text-amber-500" size={20} />
-                  Topics to Review
+                  Topics to Master
                 </CardTitle>
-                <CardDescription>Concepts identified as "weak" in recent quizzes</CardDescription>
+                <CardDescription className="text-xs font-medium">Concepts for your next review session</CardDescription>
               </CardHeader>
               <CardContent className="pt-2">
                 {weakTopics.length > 0 ? (
@@ -443,36 +451,36 @@ export default function Dashboard() {
                     {weakTopics.map((topic, i) => (
                       <div 
                         key={i} 
-                        className="flex items-center justify-between p-3 rounded-xl bg-amber-50/50 border border-amber-100/50 hover:bg-amber-50 transition-colors group cursor-help"
+                        className="flex items-center justify-between p-4 rounded-2xl bg-amber-50/30 border border-amber-100/50 hover:bg-amber-50 hover:scale-[1.02] transition-all group cursor-help"
                       >
-                        <span className="text-sm font-medium text-amber-900 truncate pr-4">{topic}</span>
-                        <Badge variant="outline" className="text-[10px] bg-white border-amber-200 text-amber-700 shrink-0">
-                          Needs Review
+                        <span className="text-sm font-bold text-amber-900 truncate pr-4">{topic}</span>
+                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-white border-amber-200 text-amber-700 shrink-0">
+                          Review
                         </Badge>
                       </div>
                     ))}
                     <Button 
                       variant="outline" 
-                      className="w-full rounded-xl mt-2 border-dashed text-xs text-muted-foreground"
+                      className="w-full rounded-2xl h-11 mt-2 border-dashed border-amber-200 text-xs font-bold text-amber-700 bg-amber-50/20 hover:bg-amber-50"
                       onClick={() => navigate("/materials")}
                     >
-                      Launch Review Session
+                      Browse Review Areas
                     </Button>
                   </div>
                 ) : (
-                  <div className="h-40 flex flex-col items-center justify-center text-center p-6 bg-muted/20 rounded-2xl border-2 border-dashed border-border/50">
-                    <Sparkles className="text-primary mb-2 animate-pulse" size={32} />
-                    <p className="text-sm font-bold text-foreground">No weak areas detected!</p>
-                    <p className="text-[11px] text-muted-foreground mt-1 max-w-[200px] mx-auto">
-                      Your performance is consistent. Recommended: Try an advanced quiz or start new material to keep challenging yourself.
+                  <div className="h-44 flex flex-col items-center justify-center text-center p-6 bg-muted/10 rounded-[2rem] border-2 border-dashed border-border/50">
+                    <Sparkles className="text-primary mb-3 animate-pulse" size={36} />
+                    <p className="text-sm font-black text-foreground uppercase tracking-wider">Flawless execution!</p>
+                    <p className="text-[11px] text-muted-foreground mt-2 max-w-[200px] mx-auto leading-relaxed font-medium">
+                      Great job! Your recent performance looks consistent. Keep up the momentum.
                     </p>
                     <Button 
                       variant="link" 
                       size="sm" 
-                      className="mt-2 text-xs h-auto p-0"
+                      className="mt-3 text-[10px] font-black h-auto p-0 uppercase tracking-widest text-primary"
                       onClick={() => navigate("/materials")}
                     >
-                      Browse Materials <ChevronRight size={12} />
+                      Start New Material <ChevronRight size={10} className="ml-1" />
                     </Button>
                   </div>
                 )}
@@ -480,13 +488,13 @@ export default function Dashboard() {
             </Card>
 
             {/* Learning Velocity (Downsized Chart) */}
-            <Card className="rounded-[2rem] border-border/50 shadow-sm overflow-hidden">
+            <Card className="rounded-[2.5rem] border-border/50 shadow-sm overflow-hidden bg-white">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <CardTitle className="text-lg font-black flex items-center gap-2">
                   <TrendingUp className="text-green-500" size={20} />
-                  Learning Score
+                  Course Velocity
                 </CardTitle>
-                <CardDescription>Performance across last 10 quizzes</CardDescription>
+                <CardDescription className="text-xs font-medium">Performance trends across your journey</CardDescription>
               </CardHeader>
               <CardContent className="h-48 pt-4">
                 <ResponsiveContainer width="100%" height="100%">
@@ -503,8 +511,8 @@ export default function Dashboard() {
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="bg-background/90 backdrop-blur border border-border p-2 rounded-lg shadow-lg text-xs font-bold">
-                              {payload[0].value}%
+                            <div className="bg-slate-900 text-white border-none px-3 py-1.5 rounded-full shadow-2xl text-[10px] font-black">
+                              {payload[0].value}% Score
                             </div>
                           );
                         }
@@ -515,19 +523,19 @@ export default function Dashboard() {
                       type="monotone" 
                       dataKey="score" 
                       stroke="hsl(var(--primary))" 
-                      strokeWidth={2}
+                      strokeWidth={3}
                       fill="url(#velocityGrad)"
-                      animationDuration={800}
+                      animationDuration={1500}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="w-full text-[10px] text-primary mt-2"
+                  className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 mt-4 hover:bg-primary/5 hover:text-primary transition-all"
                   onClick={() => navigate("/progress")}
                 >
-                  Full Insights <ChevronRight size={12} />
+                  View Performance Hub <ChevronRight size={10} className="ml-1" />
                 </Button>
               </CardContent>
             </Card>
