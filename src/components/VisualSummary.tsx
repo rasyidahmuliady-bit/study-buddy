@@ -32,30 +32,30 @@ export const VisualSummary: React.FC<VisualSummaryProps> = ({ data }) => {
       </motion.div>
 
       {/* Branches */}
-      <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-4xl">
+      <div className="mt-12 flex flex-wrap justify-center gap-8 w-full max-w-6xl mx-auto">
         {data.nodes.map((node, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 + 0.3 }}
-            className="relative bg-white p-5 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow group shrink-0"
+            className="relative bg-white p-8 rounded-[2.5rem] border border-border shadow-sm hover:shadow-md transition-all group flex-1 min-w-[280px] max-w-[400px]"
           >
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
-                <GitMerge size={16} />
+            <div className="flex flex-col gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/5 text-primary/40 flex items-center justify-center shrink-0 border border-primary/10">
+                <GitMerge size={24} />
               </div>
               <div>
-                <h4 className="font-bold text-sm text-slate-900 mb-1">{node.label}</h4>
+                <h4 className="font-black text-lg text-slate-900 mb-2 leading-tight uppercase tracking-tight">{node.label}</h4>
                 {node.description && (
-                  <p className="text-[11px] text-slate-500 leading-tight mb-2 line-clamp-2 italic">
+                  <p className="text-sm text-slate-500 leading-relaxed mb-4 italic">
                     {node.description}
                   </p>
                 )}
                 {node.subNodes && node.subNodes.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-4">
                     {node.subNodes.map((sn, j) => (
-                      <span key={j} className="text-[9px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full border border-slate-200">
+                      <span key={j} className="text-[10px] font-black px-3 py-1 bg-slate-50 text-slate-500 rounded-lg border border-slate-100 uppercase tracking-widest">
                         {sn}
                       </span>
                     ))}
@@ -73,21 +73,21 @@ export const VisualSummary: React.FC<VisualSummaryProps> = ({ data }) => {
   );
 
   const renderFlow = () => (
-    <div className="py-8 px-4 w-full flex flex-col gap-6 items-center max-w-3xl mx-auto">
+    <div className="py-12 px-4 w-full flex flex-col gap-8 items-center max-w-5xl mx-auto">
       {data.nodes.map((node, i) => (
         <React.Fragment key={i}>
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="w-full bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm flex items-center gap-6 relative group"
+            className="w-full bg-white p-8 rounded-3xl border-2 border-slate-100 shadow-sm flex items-center gap-8 relative group"
           >
-            <div className="w-12 h-12 rounded-2xl bg-slate-950 text-white flex items-center justify-center font-black text-xl shrink-0 shadow-lg">
+            <div className="w-14 h-14 rounded-2xl bg-slate-950 text-white flex items-center justify-center font-black text-2xl shrink-0 shadow-lg">
               {i + 1}
             </div>
             <div className="flex-1">
-              <h4 className="font-black text-base text-slate-900 mb-1 uppercase tracking-tight">{node.label}</h4>
-              {node.description && <p className="text-xs text-slate-500 font-medium leading-relaxed italic">{node.description}</p>}
+              <h4 className="font-black text-lg text-slate-900 mb-2 uppercase tracking-tight">{node.label}</h4>
+              {node.description && <p className="text-sm text-slate-500 font-medium leading-relaxed italic">{node.description}</p>}
               {node.subNodes && node.subNodes.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {node.subNodes.map((sn, idx) => (
@@ -113,31 +113,33 @@ export const VisualSummary: React.FC<VisualSummaryProps> = ({ data }) => {
   );
 
   const renderHierarchy = () => (
-    <div className="py-10 px-4 w-full max-w-4xl mx-auto">
+    <div className="py-12 px-4 w-full max-w-6xl mx-auto">
       {/* Root */}
       <div className="flex flex-col items-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-slate-900 text-white px-10 py-5 rounded-2xl shadow-xl font-black text-lg mb-12 border-4 border-slate-100"
+          className="bg-slate-900 text-white px-12 py-6 rounded-3xl shadow-xl font-black text-2xl mb-16 border-4 border-slate-100"
         >
           {data.title}
         </motion.div>
         
         {/* Children Rows */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full">
+        <div className="flex flex-wrap justify-center gap-10 w-full">
           {data.nodes.map((node, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.1 + 0.2 }}
-              className="bg-white rounded-3xl border border-border shadow-sm p-6 relative overflow-hidden group"
+              className="bg-white rounded-[2.5rem] border border-border shadow-sm p-10 relative overflow-hidden group flex-1 min-w-[300px] max-w-[450px]"
             >
-              <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-              <Layers size={20} className="text-primary/30 absolute top-4 right-4" />
-              <h4 className="font-black text-sm text-slate-900 mb-2 uppercase tracking-wide">{node.label}</h4>
-              <p className="text-[11px] text-slate-500 font-medium mb-4 leading-normal italic">{node.description}</p>
+              <div className="absolute top-0 left-0 w-2 h-full bg-primary/20" />
+              <div className="absolute top-6 right-8 p-2 bg-slate-50 rounded-xl">
+                <Layers size={22} className="text-primary/40" />
+              </div>
+              <h4 className="font-black text-xl text-slate-900 mb-4 uppercase tracking-tighter">{node.label}</h4>
+              <p className="text-sm text-slate-500 font-medium mb-8 leading-relaxed italic">{node.description}</p>
               
               {node.subNodes && (
                 <ul className="space-y-1.5">

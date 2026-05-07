@@ -802,7 +802,7 @@ export default function AIStudy() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
+    <div className="max-w-7xl mx-auto space-y-8 px-4">
       {/* Study Completion Dialog */}
       {showStudyCompleteDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
@@ -883,7 +883,7 @@ export default function AIStudy() {
                     <Clock size={16} />
                     <span>Take Break</span>
                   </div>
-                  <span className="text-[10px] font-normal opacity-70">5 min recharge</span>
+                  <span className="text-xs font-semibold opacity-70">5 Min Recharge</span>
                 </Button>
 
                 {currentChunkIndex + 1 < chunks.length ? (
@@ -896,7 +896,7 @@ export default function AIStudy() {
                       <Play size={16} />
                       <span>Continue</span>
                     </div>
-                    <span className="text-[10px] font-normal opacity-70">resume timer</span>
+                    <span className="text-xs font-semibold opacity-70">Resume timer</span>
                   </Button>
                 ) : (
                   <Button 
@@ -908,7 +908,7 @@ export default function AIStudy() {
                       <ArrowLeft size={16} />
                       <span>Finish</span>
                     </div>
-                    <span className="text-[10px] font-normal opacity-70">exit to hub</span>
+                    <span className="text-xs font-semibold opacity-70">Exit to hub</span>
                   </Button>
                 )}
               </div>
@@ -957,7 +957,7 @@ export default function AIStudy() {
         </div>
       )}
 
-      <div className="bg-card border border-border/50 rounded-[2.5rem] p-6 mb-8 shadow-sm">
+      <div className="bg-card border border-border/50 rounded-[2.5rem] p-6 md:p-8 mb-6 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex flex-col gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate("/ai-study")} className="w-fit h-7 px-2 -ml-2 mb-2 gap-1.5 text-muted-foreground hover:text-primary transition-all font-bold">
@@ -974,7 +974,7 @@ export default function AIStudy() {
                 </Badge>
               )}
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-primary mt-1">{material?.fileName}</h1>
+            <h1 className="text-lg md:text-xl lg:text-2xl font-black tracking-tight text-primary mt-1 font-sans">{material?.fileName}</h1>
           </div>
 
           <div className="flex items-center gap-4 self-end md:self-auto">
@@ -1091,10 +1091,10 @@ export default function AIStudy() {
                 </div>
               </div>
             )}
-            <CardHeader className="border-b border-border bg-muted/40 px-6 py-5">
+            <CardHeader className="border-b border-border bg-muted/40 px-8 py-6">
               <div className="flex justify-between items-center">
-                <CardTitle className="text-xl text-primary flex items-center gap-2">
-                  <BookOpen size={22} strokeWidth={2.5} />
+                <CardTitle className="text-2xl text-primary flex items-center gap-3">
+                  <BookOpen size={26} strokeWidth={2.5} />
                   {chunks[currentChunkIndex]?.title}
                 </CardTitle>
                 <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-tighter opacity-60 bg-background/50">
@@ -1102,14 +1102,14 @@ export default function AIStudy() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 p-0 overflow-hidden flex flex-col md:flex-row">
-              <div className="flex-1 px-6 py-6 md:px-12 md:py-10 overflow-y-auto max-h-[600px] scroll-smooth">
-                <div className="prose prose-slate dark:prose-invert max-w-none 
+            <CardContent className="flex-1 p-0 overflow-hidden flex flex-col lg:flex-row min-h-[600px]">
+              <div className="flex-1 px-8 py-10 md:px-12 md:py-16 overflow-y-auto max-h-[1000px] scroll-smooth">
+                <div className="prose prose-lg prose-slate dark:prose-invert max-w-none 
                   prose-headings:text-primary prose-headings:font-bold prose-headings:mt-8 prose-headings:mb-4
-                  prose-h3:text-xl prose-h3:mb-3
-                  prose-p:leading-relaxed prose-p:mb-5 prose-p:text-slate-700 dark:prose-p:text-slate-300
-                  prose-li:my-2 prose-li:text-slate-700 dark:prose-li:text-slate-300
-                  prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:py-4 prose-blockquote:px-6 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:mt-8 prose-blockquote:mb-6
+                  prose-h3:text-2xl prose-h3:mb-4
+                  prose-p:leading-relaxed prose-p:mb-6 prose-p:text-slate-700 dark:prose-p:text-slate-300
+                  prose-li:my-3 prose-li:text-slate-700 dark:prose-li:text-slate-300
+                  prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:py-6 prose-blockquote:px-8 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:mt-8 prose-blockquote:mb-8
                   [&>*:first-child]:mt-0">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {formatMarkdown(chunks[currentChunkIndex]?.content)}
@@ -1122,7 +1122,7 @@ export default function AIStudy() {
               </div>
 
               {/* Dynamic Learning Resources */}
-              <div className="w-full md:w-80 bg-muted/30 border-l border-border/50 p-6 self-stretch">
+              <div className="w-full lg:w-96 bg-muted/30 border-l border-border/50 p-8 self-stretch">
                 <div className="flex flex-col h-full">
                   <div className="flex items-center gap-2 mb-6">
                     <Sparkles className="text-primary animate-pulse" size={18} />
@@ -1288,7 +1288,7 @@ export default function AIStudy() {
         </motion.div>
       </AnimatePresence>
 
-      <Card className="border-border/40 shadow-sm bg-muted/5 p-8 mb-8 rounded-[3rem]">
+      <Card className="border-border/40 shadow-sm bg-muted/5 p-8 md:p-10 mb-6 rounded-[2.5rem]">
         <div className="flex items-center gap-3 mb-6">
           <BrainCircuit className="text-primary" size={24} />
           <h3 className="text-xl font-black tracking-tight">
@@ -1333,7 +1333,7 @@ export default function AIStudy() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 bg-blue-50/50 border-blue-100 rounded-[2rem] flex gap-4 transition-all hover:bg-blue-50 shadow-sm">
+        <Card className="p-8 bg-blue-50/50 border-blue-100 rounded-[2.5rem] flex gap-5 transition-all hover:bg-blue-50 shadow-sm">
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 shrink-0">
             <BookOpen size={20} strokeWidth={2.5} />
           </div>
@@ -1342,7 +1342,7 @@ export default function AIStudy() {
             <p className="text-xs text-blue-700/80 font-medium leading-relaxed italic">"Try explaining the current core concept to an imaginary friend before moving to the next chunk."</p>
           </div>
         </Card>
-        <Card className="p-6 bg-purple-50/50 border-purple-100 rounded-[2rem] flex gap-4 transition-all hover:bg-purple-50 shadow-sm">
+        <Card className="p-8 bg-purple-50/50 border-purple-100 rounded-[2.5rem] flex gap-5 transition-all hover:bg-purple-50 shadow-sm">
           <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 shrink-0">
             <Sparkles size={20} strokeWidth={2.5} />
           </div>
@@ -1351,7 +1351,7 @@ export default function AIStudy() {
             <p className="text-xs text-purple-700/80 font-medium leading-relaxed italic">"This material has high complexity. Don't rush; your brain needs 20% more time to process technical definitions."</p>
           </div>
         </Card>
-        <Card className="p-6 bg-green-50/50 border-green-100 rounded-[2rem] flex gap-4 transition-all hover:bg-green-50 shadow-sm">
+        <Card className="p-8 bg-green-50/50 border-green-100 rounded-[2.5rem] flex gap-5 transition-all hover:bg-green-50 shadow-sm">
           <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-600 shrink-0">
             <Target size={20} strokeWidth={2.5} />
           </div>
