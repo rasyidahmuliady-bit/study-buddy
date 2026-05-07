@@ -43,7 +43,7 @@ export default function Login() {
 
         <Card className="border-border shadow-xl">
           <form onSubmit={handleLogin}>
-            <CardHeader className="space-y-1">
+            <CardHeader className="space-y-1 pb-6">
               <CardTitle className="text-2xl">Login</CardTitle>
               <CardDescription>
                 Enter your email and password to access your dashboard

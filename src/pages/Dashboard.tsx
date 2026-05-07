@@ -328,6 +328,17 @@ export default function Dashboard() {
     { name: "Success", value: recentProgress.length > 0 ? Math.round(recentProgress.reduce((acc, curr) => acc + curr.score, 0) / recentProgress.length) + "%" : "0%", icon: TrendingUp, color: "text-green-500" },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <Sparkles className="animate-spin text-primary opacity-20" size={48} />
+        <p className="text-sm font-black uppercase tracking-widest text-muted-foreground animate-pulse">
+          Crafting your dashboard...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 pb-10 max-w-7xl mx-auto">
       {/* Header & Greeting */}
@@ -477,6 +488,22 @@ export default function Dashboard() {
                       Browse Review Areas
                     </Button>
                   </div>
+                ) : recentProgress.length === 0 ? (
+                  <div className="h-44 flex flex-col items-center justify-center text-center p-6 bg-muted/10 rounded-[2rem] border-2 border-dashed border-border/50">
+                    <BookOpen className="text-primary mb-3 opacity-40" size={36} />
+                    <p className="text-sm font-black text-foreground uppercase tracking-wider">Ready to start?</p>
+                    <p className="text-[11px] text-muted-foreground mt-2 max-w-[200px] mx-auto leading-relaxed font-medium">
+                      Upload your first study material to begin your AI-powered learning journey.
+                    </p>
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      className="mt-3 text-[10px] font-black h-auto p-0 uppercase tracking-widest text-primary"
+                      onClick={() => navigate("/materials")}
+                    >
+                      Go to Materials <ChevronRight size={10} className="ml-1" />
+                    </Button>
+                  </div>
                 ) : (
                   <div className="h-44 flex flex-col items-center justify-center text-center p-6 bg-muted/10 rounded-[2rem] border-2 border-dashed border-border/50">
                     <Sparkles className="text-primary mb-3 animate-pulse" size={36} />
@@ -507,38 +534,45 @@ export default function Dashboard() {
                 <CardDescription className="text-xs font-medium">Performance trends across your journey</CardDescription>
               </CardHeader>
               <CardContent className="h-48 pt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={recentProgress.length > 0 ? recentProgress : []}>
-                    <defs>
-                      <linearGradient id="velocityGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="date" hide />
-                    <YAxis domain={[0, 100]} hide />
-                    <RechartsTooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-slate-900 text-white border-none px-3 py-1.5 rounded-full shadow-2xl text-[10px] font-black">
-                              {payload[0].value}% Score
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="score" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={3}
-                      fill="url(#velocityGrad)"
-                      animationDuration={1500}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {recentProgress.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={recentProgress}>
+                      <defs>
+                        <linearGradient id="velocityGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" hide />
+                      <YAxis domain={[0, 100]} hide />
+                      <RechartsTooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-slate-900 text-white border-none px-3 py-1.5 rounded-full shadow-2xl text-[10px] font-black">
+                                {payload[0].value}% Score
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="score" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={3}
+                        fill="url(#velocityGrad)"
+                        animationDuration={1500}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center opacity-40">
+                    <BarChart3 size={32} className="mb-2" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">No Data Yet</p>
+                  </div>
+                )}
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -670,7 +704,7 @@ export default function Dashboard() {
               </p>
               <Button 
                 className="w-full rounded-full bg-white text-slate-950 hover:bg-slate-200 font-bold shadow-lg"
-                onClick={() => navigate("/materials")}
+                onClick={nextStep?.onClick || (() => navigate("/materials"))}
               >
                 Start Recommended Session
               </Button>
