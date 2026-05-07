@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Plus
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress as ShadcnProgress } from "@/components/ui/progress";
@@ -26,6 +27,7 @@ export default function Progress() {
   const [progressData, setProgressData] = useState<any[]>([]);
   const [materials, setMaterials] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [displayCount, setDisplayCount] = useState(5);
 
   useEffect(() => {
     fetchProgress();
@@ -154,7 +156,7 @@ export default function Progress() {
             </div>
           ) : progressData.length > 0 ? (
             <div className="space-y-4">
-              {progressData.map((record) => (
+              {progressData.slice(0, displayCount).map((record) => (
                 <Card key={record.id} className="border-border shadow-sm hover:border-primary/30 transition-colors">
                   <CardContent className="p-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -202,6 +204,17 @@ export default function Progress() {
                   </CardContent>
                 </Card>
               ))}
+              
+              {displayCount < progressData.length && (
+                <Button 
+                  variant="outline" 
+                  className="w-full h-12 rounded-xl text-primary font-bold gap-2 border-primary/20 hover:bg-primary/5 transition-all"
+                  onClick={() => setDisplayCount(prev => prev + 5)}
+                >
+                  <Plus size={18} />
+                  Show More History
+                </Button>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed rounded-xl bg-card">
@@ -239,23 +252,23 @@ export default function Progress() {
                             </span>
                           </div>
                           {insight.count > 1 && (
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-destructive/10 text-destructive border-destructive/20 font-bold uppercase">
+                            <Badge variant="outline" className="text-xs h-5 px-2 bg-destructive/10 text-destructive border-destructive/20 font-bold uppercase">
                               {insight.count} Errors
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center justify-between mt-1">
-                          <span className="text-[10px] text-destructive/60 font-medium truncate max-w-[150px]">
+                          <span className="text-xs text-destructive/60 font-medium truncate max-w-[150px]">
                             {insight.subject}
                           </span>
                           <Link to={`/ai-study?id=${insight.materialId}&mode=spaced`}>
                             <Button 
                               variant="link" 
                               size="sm" 
-                              className="h-6 p-0 text-[10px] font-black uppercase text-destructive hover:text-destructive/80 flex items-center gap-1"
+                              className="h-6 p-0 text-xs font-black uppercase text-destructive hover:text-destructive/80 flex items-center gap-1"
                             >
                               Study Again
-                              <ArrowRight size={10} />
+                              <ArrowRight size={12} />
                             </Button>
                           </Link>
                         </div>
@@ -270,14 +283,14 @@ export default function Progress() {
               </div>
 
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Strengths</h4>
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Strengths</h4>
                 <div className="flex flex-wrap gap-2">
                   {masteredTopics.length > 0 ? (
                     masteredTopics.map((topic, idx) => (
                       <Badge 
                         key={idx} 
                         variant="secondary" 
-                        className="bg-green-50 text-green-700 hover:bg-green-100 border-green-100/50 py-1.5 px-3 rounded-full text-[10px] font-bold"
+                        className="bg-green-50 text-green-700 hover:bg-green-100 border-green-100/50 py-1.5 px-3 rounded-full text-xs font-bold"
                       >
                         {topic}
                       </Badge>

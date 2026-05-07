@@ -54,6 +54,14 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
     ${weakTopics && weakTopics.length > 0 ? `SPACED REPETITION MODE: The student has difficulty with these specific topics: [${weakTopics.join(", ")}]. 
     PRIORITIZE these topics in your chunking. Ensure the explanations for these are more detailed and clear.` : ''}
 
+    VISUAL LEARNING SUPPORT (MANDATORY):
+    For EVERY chunk, include a 'visualData' object that describes a structured visual representation to aid visual learners.
+    - Choose the most appropriate type: 'mindmap', 'flow', or 'hierarchy' based on the chunk content.
+    - Keep it simple, clear, and high-level.
+    - 'mindmap': Use for central themes with several sub-topics or attributes.
+    - 'flow': Use for processes, step-by-step sequences, or cause-and-effect.
+    - 'hierarchy': Use for categorizations, levels of information, or organizational structures.
+
     For each chunk:
     1. Provide a clear, descriptive title.
     2. Write detailed content using a highly organized structure:
@@ -67,8 +75,9 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
          - Add a "Summary Note" at the end of each chunk in a blockquote (>) format.
     3. Ensure no important information from the original text is lost.
     4. Format key takeaways clearly.
+    5. PROVIDE 'visualData' for EVERY chunk.
     
-    Return as a JSON array of objects with 'title' and 'content' keys.
+    Return as a JSON array of objects with 'title', 'content', and 'visualData' keys.
 
     Material:
     ${content}`,
@@ -80,9 +89,29 @@ export async function generateStudyChunks(content: string, weakTopics?: string[]
           type: Type.OBJECT,
           properties: {
             title: { type: Type.STRING },
-            content: { type: Type.STRING }
+            content: { type: Type.STRING },
+            visualData: {
+              type: Type.OBJECT,
+              properties: {
+                type: { type: Type.STRING, enum: ["mindmap", "flow", "hierarchy"] },
+                title: { type: Type.STRING },
+                nodes: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      label: { type: Type.STRING },
+                      description: { type: Type.STRING },
+                      subNodes: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ["label"]
+                  }
+                }
+              },
+              required: ["type", "title", "nodes"]
+            }
           },
-          required: ["title", "content"]
+          required: ["title", "content", "visualData"]
         }
       }
     }

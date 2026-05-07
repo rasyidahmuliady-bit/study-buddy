@@ -100,7 +100,7 @@ export default function Landing() {
               {
                 icon: <BookOpen className="text-blue-500" />,
                 title: "AI Content Chunking",
-                description: "Upload PDFs, PPTs, or notes. Our AI breaks them into manageable 20-minute study segments to prevent burnout."
+                description: "Upload PDFs, PPTs, or notes. Our AI breaks them into manageable study segments with customizable timers to match your focus style."
               },
               {
                 icon: <BrainCircuit className="text-purple-500" />,
@@ -152,7 +152,7 @@ export default function Landing() {
           <div className="relative z-10">
             <h2 className="text-4xl font-bold mb-6">Ready to transform your study habits?</h2>
             <p className="text-primary-foreground/80 text-lg mb-10 max-w-xl mx-auto">
-              Join thousands of students who are already using Study Buddy to ace their exams and stay focused.
+              Focus better, learn faster, and achieve your academic goals with Study Buddy.
             </p>
             <Button size="lg" variant="secondary" className="h-12 px-10 text-lg font-bold" onClick={() => navigate("/register")}>
               Get Started

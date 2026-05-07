@@ -13,7 +13,8 @@ import {
   Sparkles,
   Play,
   ChevronRight,
-  RotateCcw
+  RotateCcw,
+  BarChart3
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -44,6 +45,7 @@ interface ProgressData {
   date: string;
   userId: string;
   quizId: string;
+  studyMode?: string;
 }
 
 interface NextStep {
@@ -540,6 +542,104 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Section 3: Recent Quiz History (New) */}
+          <Card className="rounded-[2.5rem] border-border/50 shadow-sm overflow-hidden bg-white">
+            <CardHeader className="pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-xl font-black flex items-center gap-2">
+                  <BarChart3 className="text-purple-500" size={22} />
+                  Recent Quiz History
+                </CardTitle>
+                <CardDescription className="text-sm font-medium">Your latest performance records</CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="rounded-xl font-bold text-sm h-10 px-4"
+                onClick={() => navigate("/progress")}
+              >
+                View All
+              </Button>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              {recentProgress.length > 0 ? (
+                <div className="space-y-3">
+                  {[...recentProgress].reverse().slice(0, 5).map((record, i) => {
+                    const material = recentMaterials.find(m => m.id === record.quizId);
+                    
+                    const getPerformanceLabel = (score: number) => {
+                      if (score >= 90) return { label: "Excellent", color: "bg-green-100 text-green-700 border-green-200" };
+                      if (score >= 70) return { label: "Strong", color: "bg-blue-100 text-blue-700 border-blue-200" };
+                      if (score >= 40) return { label: "Improving", color: "bg-amber-100 text-amber-700 border-amber-200" };
+                      return { label: "Needs Review", color: "bg-red-100 text-red-700 border-red-200" };
+                    };
+                    
+                    const perf = getPerformanceLabel(record.score);
+                    
+                    return (
+                      <div 
+                        key={record.id} 
+                        className="p-4 rounded-2xl bg-muted/30 border border-border/50"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-4">
+                            <div className={cn(
+                              "w-12 h-12 rounded-full shrink-0 flex flex-col items-center justify-center border-2 border-white shadow-sm",
+                              record.score >= 80 ? "bg-green-500 text-white" :
+                              record.score >= 60 ? "bg-blue-500 text-white" :
+                              "bg-amber-500 text-white"
+                            )}>
+                              <span className="text-sm font-black leading-none">{record.score}%</span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-bold truncate max-w-[150px] md:max-w-xs leading-none">
+                                  {material?.fileName || "Study Session"}
+                                </p>
+                                <Badge variant="outline" className={cn("text-xs h-5 px-2 font-bold uppercase tracking-tight shrink-0", perf.color)}>
+                                  {perf.label}
+                                </Badge>
+                                {record.studyMode && (
+                                  <Badge variant="secondary" className="text-xs h-5 px-2 font-bold uppercase tracking-tight bg-purple-50 text-purple-600 border-purple-100">
+                                    {record.studyMode.replace("mode", "")}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                {record.date}
+                              </p>
+                              
+                              {record.weakTopics && record.weakTopics.length > 0 && (
+                                <div className="pt-1">
+                                  <p className="text-xs font-bold text-slate-500 uppercase tracking-tight mb-1">Weak Areas:</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {record.weakTopics.slice(0, 2).map((topic: string, idx: number) => (
+                                      <span key={idx} className="text-xs text-slate-500 bg-white/50 px-2.5 py-0.5 rounded-md border border-border/30">
+                                        • {topic.toLowerCase()}
+                                      </span>
+                                    ))}
+                                    {record.weakTopics.length > 2 && (
+                                      <span className="text-xs text-slate-400 italic">+{record.weakTopics.length - 2} more</span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-10 text-center opacity-50 space-y-2">
+                  <FileText className="mx-auto" size={32} />
+                  <p className="text-xs font-medium text-muted-foreground">No quiz activity recorded yet.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* RIGHT COLUMN: INSIGHTS & UTILS (4 units) */}

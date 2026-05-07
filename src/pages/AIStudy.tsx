@@ -41,6 +41,7 @@ import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+import { VisualSummary } from "@/components/VisualSummary";
 
 export default function AIStudy() {
   const location = useLocation();
@@ -199,11 +200,64 @@ export default function AIStudy() {
           resolve(true);
         }
       };
-      img.onerror = () => resolve(false);
+      // Try primary domain, then fallback domain
+      img.onerror = () => {
+        const fallbackImg = new Image();
+        fallbackImg.referrerPolicy = "no-referrer";
+        fallbackImg.onload = () => {
+          if (fallbackImg.naturalWidth === 120 && fallbackImg.naturalHeight === 90) {
+            resolve(false);
+          } else {
+            resolve(true);
+          }
+        };
+        fallbackImg.onerror = () => resolve(false);
+        fallbackImg.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+      };
       // mqdefault.jpg is 320x180 for valid videos, and 120x90 for invalid ones
       img.src = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
     });
   };
+
+  // Safe YouTube Thumbnail component with fallbacks for production reliability
+  const YouTubeThumbnail = ({ videoId, title }: { videoId: string, title: string }) => {
+    const [src, setSrc] = useState(`https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`);
+    const [errorCount, setErrorCount] = useState(0);
+
+    const handleError = () => {
+      if (errorCount === 0) {
+        // Fallback to alternative YouTube domain
+        setSrc(`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`);
+        setErrorCount(1);
+      } else {
+        // Second failure - show generic placeholder
+        setErrorCount(2);
+      }
+    };
+
+    if (errorCount >= 2) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 text-slate-400 gap-2 border border-slate-200">
+          <Play size={32} className="opacity-20" fill="currentColor" />
+          <div className="text-center px-4">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-50">Thumbnail</p>
+            <p className="text-[9px] font-bold uppercase tracking-tight opacity-40">Unavailable</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <img 
+        src={src} 
+        alt={title}
+        referrerPolicy="no-referrer"
+        onError={handleError}
+        className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110"
+      />
+    );
+  };
+
 
   useEffect(() => {
     if (auth.currentUser) {
@@ -1060,6 +1114,10 @@ export default function AIStudy() {
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {formatMarkdown(chunks[currentChunkIndex]?.content)}
                   </ReactMarkdown>
+
+                  {chunks[currentChunkIndex]?.visualData && (
+                    <VisualSummary data={chunks[currentChunkIndex].visualData} />
+                  )}
                 </div>
               </div>
 
@@ -1084,8 +1142,7 @@ export default function AIStudy() {
                     ) : verifiedRecommendations && verifiedRecommendations.length > 0 ? (
                       <div className="space-y-3">
                         {verifiedRecommendations.map((video, idx) => {
-                          const videoId = video.url.match(/(?:v=|\/embed\/|youtu\.be\/)([^&?#/]+)/)?.[1];
-                          const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+                          const videoId = video.url.match(/(?:v=|\/embed\/|youtu\.be\/)([^&?#/]+)/)?.[1] || "";
                           
                           return (
                             <motion.div
@@ -1096,23 +1153,19 @@ export default function AIStudy() {
                               className="group/card p-0 rounded-2xl bg-background border border-border/60 hover:border-primary/40 hover:shadow-lg transition-all duration-300 overflow-hidden"
                             >
                               <div className="aspect-video w-full relative overflow-hidden bg-muted">
-                                <img 
-                                  src={thumbnailUrl} 
-                                  alt={video.title}
-                                  referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-110"
-                                />
-                                <div className="absolute inset-0 bg-black/20 group-hover/card:bg-black/0 transition-colors" />
+                                <YouTubeThumbnail videoId={videoId} title={video.title} />
+                                <div className="absolute inset-0 bg-black/5 group-hover/card:bg-black/0 transition-colors" />
                                 <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">
                                   YouTube
                                 </div>
                               </div>
+
                               <div className="p-3 space-y-2">
                                 <div>
-                                  <h4 className="text-[11px] font-black leading-tight line-clamp-2 group-hover/card:text-primary transition-colors">
+                                  <h4 className="text-sm font-bold leading-tight line-clamp-2 group-hover/card:text-primary transition-colors">
                                     {video.title}
                                   </h4>
-                                  <p className="text-[9px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
+                                  <p className="text-xs font-bold text-muted-foreground mt-1 uppercase tracking-tight">
                                     {video.channel}
                                   </p>
                                 </div>
@@ -1120,9 +1173,9 @@ export default function AIStudy() {
                                   href={video.url}
                                   target="_blank"
                                   rel="noreferrer noopener"
-                                  className="mt-1 inline-flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-primary/5 hover:bg-primary text-primary hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
+                                  className="mt-1 inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary/5 hover:bg-primary text-primary hover:text-white transition-all text-xs font-black uppercase tracking-widest"
                                 >
-                                  <Play size={12} fill="currentColor" className="group-hover/card:animate-pulse" />
+                                  <Play size={14} fill="currentColor" className="group-hover/card:animate-pulse" />
                                   Watch Video
                                 </a>
                               </div>
@@ -1136,10 +1189,10 @@ export default function AIStudy() {
                           <AlertCircle size={18} className="text-muted-foreground" />
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[11px] font-bold text-slate-700 leading-tight">
+                          <p className="text-sm font-bold text-slate-700 leading-tight">
                             We could not find verified videos for this topic yet.
                           </p>
-                          <p className="text-[10px] text-muted-foreground italic px-4">
+                          <p className="text-xs text-muted-foreground italic px-4">
                             You can manually search for educational resources on YouTube.
                           </p>
                         </div>
@@ -1148,13 +1201,13 @@ export default function AIStudy() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            className="w-full h-auto min-h-10 py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-wide border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 flex items-center justify-center gap-2 whitespace-normal leading-tight text-center"
+                            className="w-full h-auto min-h-10 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wide border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 flex items-center justify-center gap-2 whitespace-normal leading-tight text-center"
                             onClick={() => {
                               const simplifiedTopic = simplifyTopic(currentChunk?.title || "");
                               window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(simplifiedTopic + " educational")}`, "_blank");
                             }}
                           >
-                            <Search size={12} className="shrink-0" />
+                            <Search size={14} className="shrink-0" />
                             <span>
                               Search YouTube: <span className="text-primary/70">{simplifyTopic(currentChunk?.title || "")}</span>
                             </span>
@@ -1165,11 +1218,11 @@ export default function AIStudy() {
 
                     {!recsLoading && verifiedRecommendations.length > 0 && (
                       <div className="mt-4 p-4 rounded-2xl bg-primary/5 border border-primary/10">
-                        <h4 className="text-[10px] font-black uppercase mb-2 text-primary flex items-center gap-2">
-                          <BrainCircuit size={12} />
+                        <h4 className="text-xs font-black uppercase mb-2 text-primary flex items-center gap-2">
+                          <BrainCircuit size={14} />
                           Pro Mastery Tip
                         </h4>
-                        <p className="text-[10px] leading-relaxed text-slate-600 font-medium italic">
+                        <p className="text-xs leading-relaxed text-slate-600 font-medium italic">
                           "Visual learning reinforces the mental models you build during reading. Watch at least one of these to solidify today's session."
                         </p>
                       </div>
@@ -1194,7 +1247,7 @@ export default function AIStudy() {
                   <span className="hidden sm:inline">Previous</span>
                 </Button>
                 
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-background/50 px-3 py-1.5 rounded-full border border-border">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest bg-background/50 px-4 py-2 rounded-full border border-border">
                   {currentChunkIndex + 1} / {chunks.length}
                 </span>
               </div>
