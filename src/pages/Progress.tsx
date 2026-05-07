@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, toTitleCase } from "@/lib/utils";
 
 export default function Progress() {
   const [progressData, setProgressData] = useState<any[]>([]);
@@ -78,8 +78,7 @@ export default function Progress() {
       topics.forEach((topic: string) => {
         // Normalize: title case for cleaner concepts
         let normalized = topic.trim();
-        // Basic cleaning if it's already a sentence but short
-        normalized = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+        normalized = toTitleCase(normalized);
         
         // Filter out very long ones that missed the truncation in Quiz.tsx
         if (normalized.length > 50) return;

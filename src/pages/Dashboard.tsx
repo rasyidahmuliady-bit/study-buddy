@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, toTitleCase } from "@/lib/utils";
 
 import { 
   LineChart, 
@@ -69,8 +69,7 @@ export default function Dashboard() {
 
   const [dailyGoal, setDailyGoal] = useState({ current: 0, total: 4, percentage: 0 });
   const [studySchedule, setStudySchedule] = useState<any[]>([]);
-
-  const [weakTopics, setWeakTopics] = useState<string[]>([]);
+  const [weakTopicData, setWeakTopicData] = useState<{ topic: string, materialId: string }[]>([]);
   const [nextStep, setNextStep] = useState<NextStep | null>(null);
 
   useEffect(() => {
@@ -162,18 +161,26 @@ export default function Dashboard() {
         );
         setRecentProgress(progressData);
 
-        // Weak Topics Extraction
-        const allWeakTopics = rawProgress.flatMap(p => p.weakTopics || []);
-        const topicCounts: Record<string, number> = {};
-        allWeakTopics.forEach(t => {
-          if (!t || t.length > 50) return;
-          topicCounts[t] = (topicCounts[t] || 0) + 1;
+        // Weak Topics Extraction with Material Context
+        const topicMap = new Map<string, { count: number, materialId: string }>();
+        rawProgress.forEach(p => {
+          (p.weakTopics || []).forEach(t => {
+            if (!t || t.length > 50) return;
+            const existing = topicMap.get(t);
+            if (existing) {
+              existing.count += 1;
+            } else {
+              topicMap.set(t, { count: 1, materialId: p.quizId });
+            }
+          });
         });
-        const sortedTopics = Object.entries(topicCounts)
-          .sort((a, b) => b[1] - a[1])
-          .map(entry => entry[0])
-          .slice(0, 5);
-        setWeakTopics(sortedTopics);
+        
+        const sortedTopicData = Array.from(topicMap.entries())
+          .sort((a, b) => b[1].count - a[1].count)
+          .slice(0, 5)
+          .map(([topic, data]) => ({ topic, materialId: data.materialId }));
+          
+        setWeakTopicData(sortedTopicData);
 
         // Daily Goal
         const today = new Date().toDateString();
@@ -190,10 +197,10 @@ export default function Dashboard() {
             mode: `Continue ${latestSession.mode.charAt(0).toUpperCase() + latestSession.mode.slice(1)} Mode`, 
             reason: `You're partially through "${activeSession?.materialName || 'your material'}". Finishing this section will consolidate your memory.` 
           });
-        } else if (sortedTopics.length > 0) {
+        } else if (sortedTopicData.length > 0) {
           setRecommendation({ 
             mode: "Spaced Repetition", 
-            reason: `We noticed you've struggled with "${sortedTopics[0]}". A quick review session will help bridge the gap.` 
+            reason: `We noticed you've struggled with "${sortedTopicData[0].topic}". A quick review session will help bridge the gap.` 
           });
         } else if (materials.length > 0) {
           setRecommendation({ 
@@ -212,8 +219,8 @@ export default function Dashboard() {
           
           if (latestScore < 50) {
             setUserInsight(`Your last quiz score was low (${latestScore}%). We recommend switching to Pomodoro Mode for your next session to break the material down into smaller, manageable chunks.`);
-          } else if (sortedTopics.length > 0) {
-            setUserInsight(`You've been struggling with "${sortedTopics[0]}". Try a Spaced Repetition session today to reinforce this specific concept before it fades from memory.`);
+          } else if (sortedTopicData.length > 0) {
+            setUserInsight(`You've been struggling with "${sortedTopicData[0].topic}". Try a Spaced Repetition session today to reinforce this specific concept before it fades from memory.`);
           } else if (avgScore > 85 && totalSessions > 3) {
             setUserInsight("You've mastered your current materials! To keep growing, try starting a new, more advanced topic or teaching a concept to someone else (The Feynman Technique).");
           } else {
@@ -229,12 +236,12 @@ export default function Dashboard() {
         const avgScore = rawProgress.length > 0 ? rawProgress.reduce((acc, p) => acc + p.score, 0) / rawProgress.length : 0;
         
         // Priority 1: Weak Topics (If they exist, they need focus)
-        if (sortedTopics.length > 0) {
+        if (sortedTopicData.length > 0) {
           step = {
             title: "Review Weak Topics",
-            description: `Strengthen your understanding of "${sortedTopics[0]}" based on recent quiz results.`,
+            description: `Strengthen your understanding of "${sortedTopicData[0].topic}" based on recent quiz results.`,
             actionLabel: "Start Practice",
-            onClick: () => navigate("/materials"),
+            onClick: () => navigate(`/ai-study?id=${sortedTopicData[0].materialId}&mode=spaced`),
             icon: BrainCircuit,
             colorClass: "bg-amber-500"
           };
@@ -436,7 +443,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Section 2: Weak Topics & Progress Analysis */}
+              {/* Section 2: Weak Topics & Progress Analysis */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Weak Topics to Review */}
             <Card className="rounded-[2.5rem] border-border/50 shadow-sm overflow-hidden bg-white">
@@ -448,14 +455,15 @@ export default function Dashboard() {
                 <CardDescription className="text-xs font-medium">Concepts for your next review session</CardDescription>
               </CardHeader>
               <CardContent className="pt-2">
-                {weakTopics.length > 0 ? (
+                {weakTopicData.length > 0 ? (
                   <div className="space-y-3">
-                    {weakTopics.map((topic, i) => (
+                    {weakTopicData.map((item, i) => (
                       <div 
                         key={i} 
-                        className="flex items-center justify-between p-4 rounded-2xl bg-amber-50/30 border border-amber-100/50 hover:bg-amber-50 hover:scale-[1.02] transition-all group cursor-help"
+                        className="flex items-center justify-between p-4 rounded-2xl bg-amber-50/30 border border-amber-100/50 hover:bg-amber-50 hover:scale-[1.02] transition-all group cursor-pointer"
+                        onClick={() => navigate(`/ai-study?id=${item.materialId}&mode=spaced`)}
                       >
-                        <span className="text-sm font-bold text-amber-900 truncate pr-4">{topic}</span>
+                        <span className="text-sm font-bold text-amber-900 truncate pr-4">{toTitleCase(item.topic)}</span>
                         <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-white border-amber-200 text-amber-700 shrink-0">
                           Review
                         </Badge>
@@ -464,7 +472,7 @@ export default function Dashboard() {
                     <Button 
                       variant="outline" 
                       className="w-full rounded-2xl h-11 mt-2 border-dashed border-amber-200 text-xs font-bold text-amber-700 bg-amber-50/20 hover:bg-amber-50"
-                      onClick={() => navigate("/materials")}
+                      onClick={() => navigate("/ai-study")}
                     >
                       Browse Review Areas
                     </Button>
@@ -616,7 +624,7 @@ export default function Dashboard() {
                                   <div className="flex flex-wrap gap-1.5">
                                     {record.weakTopics.slice(0, 2).map((topic: string, idx: number) => (
                                       <span key={idx} className="text-xs text-slate-500 bg-white/50 px-2.5 py-0.5 rounded-md border border-border/30">
-                                        • {topic.toLowerCase()}
+                                        • {toTitleCase(topic)}
                                       </span>
                                     ))}
                                     {record.weakTopics.length > 2 && (

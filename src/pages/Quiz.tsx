@@ -24,7 +24,7 @@ import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, toTitleCase } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function Quiz() {
@@ -154,13 +154,8 @@ export default function Quiz() {
     const finalScore = Math.round((score / questions.length) * 100);
     // Requirement: Extract meaningful topics. If it's a question, try to truncate or use a generic "Topic" label
     const weakTopics = wrongAnswers.map(wa => {
-      if (wa.topic) return wa.topic;
-      // If it's a question (ends with ?), try to extract something meaningful or truncate
-      const q = wa.question;
-      if (q.length > 30) {
-        return q.substring(0, 27) + "...";
-      }
-      return q;
+      const topic = wa.topic || (wa.question.length > 30 ? wa.question.substring(0, 27) + "..." : wa.question);
+      return toTitleCase(topic);
     }).slice(0, 5);
     const allQuestions = questions.map(q => q.question);
     try {
